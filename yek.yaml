@@ -1,0 +1,11 @@
+project: blurt-text-expander
+paths:
+  include:
+    - src
+    - scripts
+    - manifests
+    - tests
+settings:
+  ignore:
+    - node_modules
+    - dist

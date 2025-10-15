@@ -1,0 +1,57 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: Inter, system-ui, -apple-system, Segoe UI, Roboto, Noto Sans, Ubuntu,
+    Cantarell, "Helvetica Neue", Arial, "Apple Color Emoji", "Segoe UI Emoji",
+    "Segoe UI Symbol", sans-serif;
+  --text-size: 14px;
+  --leading: 1.4;
+  --color-bg: #0b0b0c;
+  --color-panel: #1a1b1e;
+  --color-panel-2: #16171a;
+  --color-text: #ffffff;
+  --color-muted: #9aa1a9;
+  --color-border: #2b2d31;
+  --color-accent: #ff4500;
+  --color-accent-hover: #cc3a00;
+}
+
+[data-theme="light"] {
+  --color-bg: #fafafa;
+  --color-panel: #ffffff;
+  --color-panel-2: #f4f6f8;
+  --color-text: #0b0b0c;
+  --color-muted: #4b5563;
+  --color-border: #e5e7eb;
+}
+
+html,
+body {
+  font-family: var(--font-sans);
+  font-size: var(--text-size);
+  line-height: var(--leading);
+}
+
+/* Remove default focus outlines/rings for controls */
+:where(input, textarea, select, button):focus {
+  outline: none;
+  box-shadow: none;
+}
+
+:where(input, textarea) {
+  caret-color: var(--color-text);
+}
+
+/* Accessible, consistent focus ring for tab navigation */
+:where(input, textarea, select, button):focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.6);
+}
+
+/* Checkboxes/radios: use outline for clear ring */
+input[type="checkbox"]:focus-visible,
+input[type="radio"]:focus-visible {
+  outline: 2px solid rgba(255, 255, 255, 0.7);
+  outline-offset: 2px;
+  box-shadow: none;
+}

@@ -1,0 +1,84 @@
+@import "tailwindcss";
+
+/*
+  Tailwind v4 tokens and theme setup for the popup UI.
+  Dark is default; light overrides are below using [data-theme="light"].
+*/
+
+/* Default: dark */
+@theme {
+  --font-sans: Inter, system-ui, -apple-system, Segoe UI, Roboto, Noto Sans, Ubuntu,
+    Cantarell, "Helvetica Neue", Arial, "Apple Color Emoji", "Segoe UI Emoji",
+    "Segoe UI Symbol", sans-serif;
+  --text-size: 13px;
+  --leading: 1.4;
+  --color-bg: #0b0b0c;
+  --color-panel: #1a1b1e;
+  --color-panel-2: #16171a;
+  --color-text: #ffffff;
+  --color-muted: #9aa1a9;
+  --color-border: #2b2d31;
+  /* Reddit brand accent */
+  --color-accent: #ff4500;
+  --color-accent-hover: #cc3a00;
+  --radius-md: 0.375rem;
+  --color-success: #00ff6a;
+}
+
+/* Normalize form-control typography across browsers (esp. Firefox) */
+button,
+input,
+textarea {
+  font: inherit;
+  line-height: inherit;
+}
+
+/* Light theme overrides */
+[data-theme="light"] {
+  --color-bg: #fafafa;
+  --color-panel: #ffffff;
+  --color-panel-2: #f4f6f8;
+  --color-text: #0b0b0c;
+  --color-muted: #4b5563;
+  --color-border: #e5e7eb;
+  --color-accent: #ff4500;
+  --color-accent-hover: #cc3a00;
+  --color-success: #16a34a; /* green-600 */
+}
+
+/* Base, normalize across browsers (esp. Firefox) */
+html,
+body {
+  font-family: var(--font-sans);
+  font-size: var(--text-size);
+  line-height: var(--leading);
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+  line-height: inherit;
+}
+
+/* Remove default focus outlines/rings for controls */
+:where(input, textarea, select, button):focus {
+  outline: none;
+  box-shadow: none;
+}
+
+/* Consistent white focus ring for keyboard navigation */
+:where(input, textarea, select, button):focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.6);
+}
+
+input[type="checkbox"]:focus-visible,
+input[type="radio"]:focus-visible {
+  outline: 2px solid rgba(255, 255, 255, 0.7);
+  outline-offset: 2px;
+  box-shadow: none;
+}

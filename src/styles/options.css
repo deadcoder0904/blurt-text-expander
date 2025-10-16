@@ -55,3 +55,23 @@ input[type="radio"]:focus-visible {
   outline-offset: 2px;
   box-shadow: none;
 }
+
+/* Make scrollbars visible in lists and editors */
+#list,
+textarea {
+  scrollbar-gutter: stable both-edges;
+}
+/* WebKit scrollbar styling */
+#list::-webkit-scrollbar,
+textarea::-webkit-scrollbar {
+  width: 10px;
+}
+#list::-webkit-scrollbar-thumb,
+textarea::-webkit-scrollbar-thumb {
+  background-color: rgba(255, 255, 255, 0.25);
+  border-radius: 8px;
+}
+#list::-webkit-scrollbar-track,
+textarea::-webkit-scrollbar-track {
+  background: transparent;
+}

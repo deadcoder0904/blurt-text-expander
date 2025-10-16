@@ -3,6 +3,8 @@ import browser from 'webextension-polyfill'
 import { DEFAULT_SETTINGS, STORAGE_KEYS } from '../shared/constants'
 // keep local qs helper in this module for minimal diff
 import { ICON_DELETE, ICON_EDIT } from '../shared/icons'
+import { IMPORT_FILENAME, isValidImportFilename } from '../shared/import'
+import { canSaveSnippet, retargetTriggers } from '../shared/logic'
 import {
   clearOpenTarget,
   getOpenTarget,
@@ -40,7 +42,7 @@ function renderList() {
   list.innerHTML = ''
   for (const s of snippets) {
     const row = document.createElement('div')
-    row.className = 'flex items-center justify-between gap-3 p-3'
+    row.className = 'flex items-center justify-between gap-3 p-3 cursor-pointer'
     // Prevent layout shift when active by reserving right border space always
     Object.assign(row.style, {
       borderRight: '3px solid transparent',
@@ -62,7 +64,6 @@ function renderList() {
     desc.className = 'text-sm text-(--color-muted) truncate'
     desc.textContent = s.description ?? ''
     left.append(trig, desc)
-    left.addEventListener('click', () => editSnippet(s.id))
     const actions = document.createElement('div')
     actions.className = 'flex items-center gap-2'
     const editBtn = document.createElement('button')
@@ -79,14 +80,28 @@ function renderList() {
       'p-2 rounded hover:bg-(--color-panel-2) text-(--color-muted) hover:text-(--color-accent)'
     delBtn.innerHTML = ICON_DELETE
     delBtn.title = 'Delete'
+    delBtn.style.cursor = 'default'
     delBtn.addEventListener('click', async (e) => {
       e.stopPropagation()
-      snippets = snippets.filter((x) => x.id !== s.id)
+      const deletedId = s.id
+      snippets = snippets.filter((x) => x.id !== deletedId)
       await saveSnippets(snippets)
+      // If the deleted snippet is currently open in the editor, clear or switch
+      if (currentId === deletedId) {
+        currentId = null
+        if (snippets.length > 0) {
+          // Prefer opening the first remaining snippet
+          editSnippet(snippets[0].id)
+        } else {
+          clearEditor()
+        }
+      }
       renderList()
     })
     actions.append(editBtn, delBtn)
     row.append(left, actions)
+    // Clicking anywhere on the row (except delete) opens the editor
+    row.addEventListener('click', () => editSnippet(s.id))
     list.appendChild(row)
   }
   // Overlap warnings
@@ -101,6 +116,7 @@ function clearEditor() {
   qs<HTMLInputElement>('#description').value = ''
   qs<HTMLTextAreaElement>('#body').value = ''
   updateCounter()
+  updateSaveEnabled()
 }
 
 function editSnippet(id: string) {
@@ -112,6 +128,7 @@ function editSnippet(id: string) {
   qs<HTMLTextAreaElement>('#body').value = s.body
   updateCounter()
   renderList()
+  updateSaveEnabled()
 }
 
 function updateCounter() {
@@ -128,9 +145,10 @@ async function saveSnippet() {
   const descInput = qs<HTMLInputElement>('#description')
   const bodyInput = qs<HTMLTextAreaElement>('#body')
   const trigger = normalizeTrigger(trigInput.value, settings.triggerPrefix)
-  const description = descInput.value.trim() || undefined
+  const rawDesc = descInput.value.trim()
   const body = bodyInput.value
-  if (!trigger || !body) return
+  if (!canSaveSnippet(trigger, settings.triggerPrefix, rawDesc, body)) return
+  const description = rawDesc
   if (currentId) {
     snippets = snippets.map((s) => (s.id === currentId ? { ...s, trigger, description, body } : s))
   } else {
@@ -144,10 +162,22 @@ async function saveSnippet() {
   }, 1500)
 }
 
+function updateSaveEnabled() {
+  const saveBtn = qs<HTMLButtonElement>('#save')
+  const trigInput = qs<HTMLInputElement>('#trigger')
+  const descInput = qs<HTMLInputElement>('#description')
+  const bodyInput = qs<HTMLTextAreaElement>('#body')
+  const trigger = normalizeTrigger(trigInput.value, settings.triggerPrefix)
+  const ok = canSaveSnippet(trigger, settings.triggerPrefix, descInput.value, bodyInput.value)
+  saveBtn.disabled = !ok
+}
+
 async function persistSettings() {
   const enabled = qs<HTMLInputElement>('#enabled').checked
   const theme = qs<HTMLSelectElement>('#theme').value as Settings['theme']
   const newPrefix = qs<HTMLInputElement>('#prefix').value || '/'
+  const allowVal = (document.querySelector('#allowlist') as HTMLTextAreaElement | null)?.value || ''
+  const blockVal = (document.querySelector('#blocklist') as HTMLTextAreaElement | null)?.value || ''
   const charLimit = Number(qs<HTMLInputElement>('#charLimit').value)
   const autocompleteEnabled = qs<HTMLInputElement>('#autocomplete').checked
   const autoPosSel = document.querySelector('#autoPos') as HTMLSelectElement | null
@@ -164,12 +194,7 @@ async function persistSettings() {
   // If prefix changed, update all triggers to keep consistent
   if (settings.triggerPrefix !== newPrefix) {
     const old = settings.triggerPrefix
-    snippets = snippets.map((s) => {
-      let next = s.trigger
-      if (next.startsWith(old)) next = newPrefix + next.slice(old.length)
-      else next = normalizeTrigger(next, newPrefix)
-      return { ...s, trigger: next }
-    })
+    snippets = retargetTriggers(snippets, old, newPrefix)
     await saveSnippets(snippets)
     renderList()
   }
@@ -183,6 +208,14 @@ async function persistSettings() {
     autocompleteEnabled,
     autocompletePosition,
     autocompleteMaxItems,
+    allowlist: allowVal
+      .split(/\n+/)
+      .map((x) => x.trim())
+      .filter(Boolean),
+    blocklist: blockVal
+      .split(/\n+/)
+      .map((x) => x.trim())
+      .filter(Boolean),
   }
   await writeSettings(settings)
 }
@@ -195,6 +228,10 @@ async function init() {
   qs<HTMLSelectElement>('#theme').value = settings.theme
   applyTheme(settings.theme)
   qs<HTMLInputElement>('#prefix').value = settings.triggerPrefix
+  const allowEl = document.querySelector('#allowlist') as HTMLTextAreaElement | null
+  if (allowEl) allowEl.value = (settings.allowlist || []).join('\n')
+  const blockEl = document.querySelector('#blocklist') as HTMLTextAreaElement | null
+  if (blockEl) blockEl.value = (settings.blocklist || []).join('\n')
   const charLimitEl = document.querySelector('#charLimit') as HTMLInputElement | null
   if (charLimitEl) charLimitEl.value = String(settings.charLimit)
   const autoEl = document.querySelector('#autocomplete') as HTMLInputElement | null
@@ -205,11 +242,13 @@ async function init() {
   if (autoMax) autoMax.value = String(settings.autocompleteMaxItems || 8)
   renderList()
   clearEditor()
+  updateSaveEnabled()
 
   // Events
   qs<HTMLButtonElement>('#newSnippet').addEventListener('click', () => {
     clearEditor()
     currentId = null
+    renderList()
     qs<HTMLInputElement>('#trigger').focus()
   })
   const saveBtn = qs<HTMLButtonElement>('#save')
@@ -221,13 +260,21 @@ async function init() {
     saveBtn.textContent = 'Saved'
     setTimeout(() => {
       saveBtn.textContent = prev
-      saveBtn.disabled = false
+      updateSaveEnabled()
     }, 3000)
   })
   qs<HTMLButtonElement>('#cancel').addEventListener('click', () => clearEditor())
-  qs<HTMLInputElement>('#trigger').addEventListener('blur', () => persistSettings())
-  qs<HTMLInputElement>('#description').addEventListener('blur', () => persistSettings())
-  qs<HTMLTextAreaElement>('#body').addEventListener('input', updateCounter)
+  const trigEl = qs<HTMLInputElement>('#trigger')
+  const descEl = qs<HTMLInputElement>('#description')
+  const bodyEl = qs<HTMLTextAreaElement>('#body')
+  trigEl.addEventListener('blur', () => persistSettings())
+  descEl.addEventListener('blur', () => persistSettings())
+  trigEl.addEventListener('input', updateSaveEnabled)
+  descEl.addEventListener('input', updateSaveEnabled)
+  bodyEl.addEventListener('input', () => {
+    updateCounter()
+    updateSaveEnabled()
+  })
 
   qs<HTMLInputElement>('#enabled').addEventListener('change', persistSettings)
   qs<HTMLSelectElement>('#theme').addEventListener('change', () => {
@@ -314,17 +361,30 @@ async function init() {
   const dialog = qs<HTMLDivElement>('#settingsDialog')
   const openGear = qs<HTMLButtonElement>('#openSettingsGear')
   const closeBtn = qs<HTMLButtonElement>('#settingsClose')
+  const tabBtnGen = qs<HTMLButtonElement>('#tabBtnGeneral')
+  const tabBtnAdv = qs<HTMLButtonElement>('#tabBtnAdvanced')
+  const tabGen = qs<HTMLDivElement>('#tabGeneral')
+  const tabAdv = qs<HTMLDivElement>('#tabAdvanced')
   let restoreFocusEl: HTMLElement | null = null
 
+  function isVisible(el: HTMLElement): boolean {
+    if (!el) return false
+    const style = window.getComputedStyle(el)
+    if (style.display === 'none' || style.visibility === 'hidden') return false
+    // If element or its ancestors are hidden, offsetParent can be null (except for fixed)
+    if (!el.offsetParent && style.position !== 'fixed') return false
+    if (el.getClientRects().length === 0) return false
+    return true
+  }
   function focusables(): HTMLElement[] {
     const nodes = dialog.querySelectorAll<HTMLElement>(
       'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])'
     )
-    return Array.from(nodes)
-  }
-  function focusFirst() {
-    const list = focusables()
-    ;(list[0] ?? closeBtn).focus()
+    // Filter to visible, tabbable elements only
+    const raw = Array.from(nodes).filter(isVisible)
+    // Ensure custom tab order: after the last control (e.g., Export), focus the Close (X), then wrap.
+    const withoutClose = raw.filter((el) => el !== closeBtn)
+    return closeBtn && raw.includes(closeBtn) ? [...withoutClose, closeBtn] : withoutClose
   }
   function onTrapTab(e: KeyboardEvent) {
     if (modal.classList.contains('hidden')) return
@@ -332,16 +392,32 @@ async function init() {
     const list = focusables()
     if (!list.length) return
     const current = document.activeElement as HTMLElement | null
-    const idx = Math.max(0, list.indexOf(current as HTMLElement))
-    const delta = e.shiftKey ? -1 : 1
-    const nextIndex = (idx + delta + list.length) % list.length
+    const idx = current ? list.indexOf(current) : -1
+    const last = list.length - 1
+    // If focus is outside dialog, move to first/last depending on direction
+    if (idx === -1) {
+      e.preventDefault()
+      ;(e.shiftKey ? list[last] : list[0]).focus()
+      return
+    }
+    // Wrap at ends
+    if (!e.shiftKey && idx === last) {
+      e.preventDefault()
+      list[0].focus()
+      return
+    }
+    if (e.shiftKey && idx === 0) {
+      e.preventDefault()
+      list[last].focus()
+      return
+    }
+    // Otherwise, move to next/prev within list
     e.preventDefault()
-    list[nextIndex].focus()
+    list[idx + (e.shiftKey ? -1 : 1)].focus()
   }
   function openModal() {
     modal.classList.remove('hidden')
     restoreFocusEl = (document.activeElement as HTMLElement) || null
-    setTimeout(focusFirst)
     window.addEventListener('keydown', onTrapTab, true)
   }
   function closeModal() {
@@ -354,6 +430,26 @@ async function init() {
   modal.addEventListener('click', (e) => {
     if (e.target === modal || e.target === backdrop) closeModal()
   })
+
+  function setTab(which: 'general' | 'advanced') {
+    const isGen = which === 'general'
+    tabGen.classList.toggle('hidden', !isGen)
+    tabAdv.classList.toggle('hidden', isGen)
+    tabBtnGen.setAttribute('aria-selected', String(isGen))
+    tabBtnAdv.setAttribute('aria-selected', String(!isGen))
+    tabBtnGen.className = `px-3 py-1.5 rounded border-b-2 ${
+      isGen
+        ? 'border-(--color-accent) bg-(--color-panel-2)'
+        : 'border-transparent hover:bg-(--color-panel-2)'
+    }`
+    tabBtnAdv.className = `px-3 py-1.5 rounded border-b-2 ${
+      !isGen
+        ? 'border-(--color-accent) bg-(--color-panel-2)'
+        : 'border-transparent hover:bg-(--color-panel-2)'
+    }`
+  }
+  tabBtnGen.addEventListener('click', () => setTab('general'))
+  tabBtnAdv.addEventListener('click', () => setTab('advanced'))
 
   // Close preferences with Escape key
   window.addEventListener('keydown', (e) => {
@@ -376,10 +472,20 @@ async function init() {
   const importBtn = qs<HTMLButtonElement>('#importBtn')
   const exportBtn = qs<HTMLButtonElement>('#exportBtn')
   const fileInput = qs<HTMLInputElement>('#fileInput')
-  importBtn.addEventListener('click', () => fileInput.click())
+  importBtn.addEventListener('click', () => {
+    // Reset value so selecting the same file twice triggers change
+    fileInput.value = ''
+    fileInput.click()
+  })
   fileInput.addEventListener('change', async () => {
     const file = fileInput.files?.[0]
     if (!file) return
+    // Enforce filename restriction
+    if (!isValidImportFilename(file.name)) {
+      alert(`Warning: Import file must be named exactly "${IMPORT_FILENAME}"`)
+      fileInput.value = ''
+      return
+    }
     try {
       const text = await file.text()
       const json = JSON.parse(text)
@@ -394,7 +500,11 @@ async function init() {
         }, 1500)
         return
       }
-      const res = await browser.runtime.sendMessage({ type: 'IMPORT_JSON', payload: json })
+      type ImportResult = { added?: number; updated?: number }
+      const res = (await browser.runtime.sendMessage({
+        type: 'IMPORT_JSON',
+        payload: json,
+      })) as ImportResult
       const a = res?.added ?? 0
       const u = res?.updated ?? 0
       qs<HTMLDivElement>('#status').textContent = `Imported (added ${a}, updated ${u})`
@@ -413,6 +523,8 @@ async function init() {
         qs<HTMLDivElement>('#status').textContent = ''
       }, 1500)
     }
+    // Allow importing the same file again without requiring a different selection
+    fileInput.value = ''
   })
   exportBtn.addEventListener('click', async () => {
     const data = await browser.runtime.sendMessage({ type: 'EXPORT_JSON' })
@@ -420,7 +532,7 @@ async function init() {
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = 'blurt-snippets.json'
+    a.download = IMPORT_FILENAME
     a.click()
     URL.revokeObjectURL(url)
   })
@@ -431,6 +543,12 @@ async function init() {
     if (changes[STORAGE_KEYS.snippets]) {
       snippets = changes[STORAGE_KEYS.snippets].newValue as Snippet[]
       renderList()
+      // Keep editor in sync if the current snippet was deleted elsewhere (e.g., from popup)
+      if (currentId && !snippets.some((x) => x.id === currentId)) {
+        currentId = null
+        if (snippets.length > 0) editSnippet(snippets[0].id)
+        else clearEditor()
+      }
     }
     if (changes[STORAGE_KEYS.settings]) {
       settings = { ...DEFAULT_SETTINGS, ...(changes[STORAGE_KEYS.settings].newValue as Settings) }

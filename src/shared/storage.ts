@@ -3,18 +3,7 @@ import browser from 'webextension-polyfill'
 import { DEFAULT_SETTINGS, STORAGE_KEYS } from './constants'
 import type { Settings, Snippet } from './types'
 
-async function ensureLocalFromSync(keys: string[]) {
-  const local = await browser.storage.local.get(keys)
-  const missing = keys.filter((k) => !(k in local))
-  if (!missing.length) return
-  const sync = await browser.storage.sync.get(missing)
-  const toCopy: Record<string, unknown> = {}
-  for (const k of missing) if (k in sync) toCopy[k] = sync[k]
-  if (Object.keys(toCopy).length) await browser.storage.local.set(toCopy)
-}
-
 export async function getSettings(): Promise<Settings> {
-  await ensureLocalFromSync([STORAGE_KEYS.settings])
   const data = await browser.storage.local.get(STORAGE_KEYS.settings)
   return { ...DEFAULT_SETTINGS, ...(data[STORAGE_KEYS.settings] as Partial<Settings> | undefined) }
 }
@@ -24,7 +13,6 @@ export async function saveSettings(next: Settings): Promise<void> {
 }
 
 export async function getSnippets(): Promise<Snippet[]> {
-  await ensureLocalFromSync([STORAGE_KEYS.snippets])
   const data = await browser.storage.local.get(STORAGE_KEYS.snippets)
   return ((data[STORAGE_KEYS.snippets] as Snippet[]) || []).slice()
 }
@@ -48,11 +36,10 @@ export async function clearOpenTarget(): Promise<void> {
 }
 
 export function subscribe(
-  handler: (
-    changes: browser.Storage.StorageAreaOnChangedChangesType,
-    area: 'local' | 'sync' | 'managed'
-  ) => void
+  handler: (changes: Record<string, browser.Storage.StorageChange>, area: string) => void
 ) {
-  browser.storage.onChanged.addListener(handler)
-  return () => browser.storage.onChanged.removeListener(handler)
+  const cb = (changes: Record<string, browser.Storage.StorageChange>, areaName: string) =>
+    handler(changes, areaName)
+  browser.storage.onChanged.addListener(cb)
+  return () => browser.storage.onChanged.removeListener(cb)
 }

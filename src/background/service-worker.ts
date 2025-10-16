@@ -1,6 +1,7 @@
 import browser from 'webextension-polyfill'
 
 import { DEFAULT_SETTINGS, STORAGE_KEYS } from '../shared/constants'
+import { mergeSettingsShallow, mergeSnippetsByTrigger } from '../shared/import'
 import { getSettings, getSnippets, setOpenTarget } from '../shared/storage'
 import type { Settings, Snippet } from '../shared/types'
 
@@ -32,7 +33,8 @@ browser.runtime.onInstalled.addListener(async (details) => {
 })
 
 // Open options page from popup/command
-browser.runtime.onMessage.addListener(async (msg) => {
+browser.runtime.onMessage.addListener(async (raw: unknown) => {
+  const msg = (raw || {}) as { type?: string; snippetId?: string; payload?: unknown }
   if (msg?.type === 'OPEN_OPTIONS') {
     if (msg?.snippetId) await setOpenTarget(String(msg.snippetId))
     await browser.runtime.openOptionsPage()
@@ -66,19 +68,10 @@ browser.runtime.onMessage.addListener(async (msg) => {
     if (incomingSnippets) {
       const store = await browser.storage.local.get(STORAGE_KEYS.snippets)
       const existing: Snippet[] = (store?.[STORAGE_KEYS.snippets] as Snippet[]) || []
-      const map = new Map(existing.map((s) => [s.trigger, s] as const))
-      for (const s of incomingSnippets) {
-        const curr = map.get(s.trigger)
-        if (curr) {
-          map.set(s.trigger, { ...curr, ...s })
-          updated++
-        } else {
-          map.set(s.trigger, s)
-          added++
-        }
-      }
-      const merged = Array.from(map.values())
-      await browser.storage.local.set({ [STORAGE_KEYS.snippets]: merged })
+      const res = mergeSnippetsByTrigger(existing, incomingSnippets)
+      added = res.added
+      updated = res.updated
+      await browser.storage.local.set({ [STORAGE_KEYS.snippets]: res.merged })
     }
 
     if (incomingSettings) {
@@ -87,7 +80,7 @@ browser.runtime.onMessage.addListener(async (msg) => {
         ...DEFAULT_SETTINGS,
         ...(store?.[STORAGE_KEYS.settings] as Settings | undefined),
       }
-      const mergedSettings: Settings = { ...existing, ...incomingSettings }
+      const mergedSettings: Settings = mergeSettingsShallow(existing, incomingSettings)
       await browser.storage.local.set({ [STORAGE_KEYS.settings]: mergedSettings })
     }
 

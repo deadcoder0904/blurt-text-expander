@@ -13,6 +13,8 @@ export const DEFAULT_SETTINGS = {
   autocompleteEnabled: true,
   autocompletePosition: 'auto' as const,
   autocompleteMaxItems: 8,
+  allowlist: [] as string[],
+  blocklist: [] as string[],
 }
 
 export const THEMES = ['dark', 'light', 'system'] as const

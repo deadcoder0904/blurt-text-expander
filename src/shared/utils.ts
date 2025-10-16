@@ -1,4 +1,4 @@
-// Types not required here
+import type { Snippet } from './types'
 
 export function countChars(text: string): number {
   return text?.length ?? 0
@@ -90,9 +90,7 @@ export function replaceRangeWithText(
   try {
     // Ensure caret at the end, then extend backwards
     sel.collapse(range.endContainer, range.endOffset)
-    // @ts-expect-error Selection.modify is non-standard but widely supported
     if (typeof sel.modify === 'function') {
-      // @ts-expect-error non-standard API in Chrome/Firefox
       for (let i = 0; i < toDelete; i++) sel.modify('extend', 'backward', 'character')
       document.execCommand('insertText', false, replacement)
       return
@@ -135,29 +133,16 @@ export function getWordBeforeIndex(
 }
 
 export async function loadStorage<T = unknown>(key: string, fallback: T): Promise<T> {
-  // Prefer local, then sync (migration-friendly)
   try {
-    // @ts-expect-error
     const browser = (await import('webextension-polyfill')).default
     const local = await browser.storage.local.get(key)
     if (local && key in local) return local[key] as T
-  } catch {}
-  try {
-    // @ts-expect-error
-    const browser = (await import('webextension-polyfill')).default
-    const sync = await browser.storage.sync.get(key)
-    if (sync && key in sync) {
-      // Migrate to local for persistence
-      await browser.storage.local.set({ [key]: sync[key] })
-      return sync[key] as T
-    }
   } catch {}
   return fallback
 }
 
 export async function saveStorage<T = unknown>(key: string, value: T): Promise<void> {
   try {
-    // @ts-expect-error
     const browser = (await import('webextension-polyfill')).default
     await browser.storage.local.set({ [key]: value })
   } catch {}

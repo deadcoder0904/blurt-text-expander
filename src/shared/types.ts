@@ -14,6 +14,8 @@ export interface Settings {
   autocompleteEnabled: boolean
   autocompletePosition?: 'auto' | 'top' | 'bottom'
   autocompleteMaxItems?: number
+  allowlist?: string[]
+  blocklist?: string[]
 }
 
 export interface StorageShape {

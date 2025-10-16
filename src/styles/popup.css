@@ -33,6 +33,23 @@ textarea {
   line-height: inherit;
 }
 
+/* Always-visible scrollbars in results list */
+#results {
+  scrollbar-gutter: stable both-edges;
+}
+
+/* WebKit scrollbar styling for visibility */
+#results::-webkit-scrollbar {
+  width: 10px;
+}
+#results::-webkit-scrollbar-thumb {
+  background-color: rgba(255, 255, 255, 0.25);
+  border-radius: 8px;
+}
+#results::-webkit-scrollbar-track {
+  background: transparent;
+}
+
 /* Light theme overrides */
 [data-theme="light"] {
   --color-bg: #fafafa;

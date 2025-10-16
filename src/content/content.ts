@@ -2,6 +2,12 @@ import browser from 'webextension-polyfill'
 
 import { DEFAULT_SETTINGS, STORAGE_KEYS } from '../shared/constants'
 import {
+  autocompleteSuggestions,
+  isAutocompleteEnabledOnSite,
+  isSiteEnabledForSettings,
+  matchTriggerWithAliases,
+} from '../shared/logic'
+import {
   getSettings as loadSettingsLocal,
   getSnippets as loadSnippetsLocal,
 } from '../shared/storage'
@@ -14,6 +20,7 @@ let suggestEl: HTMLDivElement | null = null
 let suggestIndex = 0
 let suggestItems: Snippet[] = []
 let repositionTimer: number | null = null
+let siteActive = true
 
 function themeMode(): 'light' | 'dark' {
   if (settings.theme === 'light') return 'light'
@@ -24,17 +31,11 @@ function themeMode(): 'light' | 'dark' {
 async function hydrate() {
   settings = await loadSettingsLocal()
   snippets = await loadSnippetsLocal()
+  siteActive = isSiteEnabledForSettings(location.hostname, settings)
 }
 
 function matchTrigger(word: string): Snippet | null {
-  const w = word.trim()
-  if (!w) return null
-  // Require prefix
-  if (!w.startsWith(settings.triggerPrefix)) return null
-  // Exact match by trigger
-  // Prefer longest trigger first to avoid overshadowing
-  const sorted = [...snippets].sort((a, b) => b.trigger.length - a.trigger.length)
-  return sorted.find((s) => s.trigger === w) ?? null
+  return matchTriggerWithAliases(word, snippets, settings.triggerPrefix)
 }
 
 function shouldAutoExpandOnKey(evt: KeyboardEvent): boolean {
@@ -47,10 +48,17 @@ function shouldAutoExpandOnKey(evt: KeyboardEvent): boolean {
 }
 
 function onKeydown(evt: KeyboardEvent) {
+  if (!siteActive) return
   const target = getActiveEditable()
   if (!target) return
   // Handle suggestion navigation if open
   if (suggestEl) {
+    // If user presses Space while suggestions are visible, close them
+    if (evt.key === ' ') {
+      hideSuggest()
+      // Do not prevent default; allow the space to be inserted
+      // Continue handling below only if expansion is explicitly requested
+    }
     if (evt.key === 'ArrowDown' || evt.key === 'ArrowUp') {
       evt.preventDefault()
       const delta = evt.key === 'ArrowDown' ? 1 : -1
@@ -86,22 +94,48 @@ function desiredPlacement(target: HTMLElement, el: HTMLElement): 'top' | 'bottom
   const pref = (settings.autocompletePosition || 'auto') as 'auto' | 'top' | 'bottom'
   if (pref === 'top' || pref === 'bottom') return pref
   // auto: flip to top if not enough space below
-  const rect = target.getBoundingClientRect()
+  const rect = getCaretOrElementRect(target)
   const estimated = Math.min(240, el.clientHeight || 240)
   const spaceBelow = window.innerHeight - rect.bottom
   return spaceBelow < estimated + 8 ? 'top' : 'bottom'
 }
 
+function getCaretOrElementRect(target: HTMLElement): DOMRect {
+  // Prefer caret rect for contentEditable
+  if (target.isContentEditable) {
+    const sel = window.getSelection()
+    if (sel && sel.rangeCount > 0) {
+      const range = sel.getRangeAt(0)
+      // Ensure the range belongs to this target
+      if (target.contains(range.endContainer)) {
+        const r = range.cloneRange()
+        r.collapse(false)
+        const rects = r.getClientRects()
+        const last = rects.length ? rects[rects.length - 1] : r.getBoundingClientRect()
+        if (last && (last.width || last.height)) return last as DOMRect
+      }
+    }
+  }
+  return target.getBoundingClientRect()
+}
+
 function positionSuggest(target: HTMLElement) {
   if (!suggestEl) return
-  const rect = target.getBoundingClientRect()
+  const rect = getCaretOrElementRect(target)
   const place = desiredPlacement(target, suggestEl)
-  const top =
+  let top =
     place === 'bottom'
       ? rect.bottom + window.scrollY
       : rect.top + window.scrollY - suggestEl.offsetHeight
-  suggestEl.style.top = `${Math.max(0, top)}px`
-  suggestEl.style.left = `${rect.left + window.scrollX}px`
+  let left = rect.left + window.scrollX
+  // Clamp within viewport bounds
+  const maxTop = window.scrollY + window.innerHeight - (suggestEl.offsetHeight || 240) - 8
+  const minTop = Math.max(0, window.scrollY)
+  top = Math.max(minTop, Math.min(maxTop, top))
+  const maxLeft = window.scrollX + window.innerWidth - (suggestEl.offsetWidth || 240) - 8
+  left = Math.max(window.scrollX, Math.min(maxLeft, left))
+  suggestEl.style.top = `${top}px`
+  suggestEl.style.left = `${left}px`
 }
 
 function renderSuggest() {
@@ -192,6 +226,7 @@ function currentToken(): string {
 }
 
 function onInput() {
+  if (!siteActive) return
   if (!suggestEl) return
   const token = currentToken()
   const q = token.trim()
@@ -199,8 +234,12 @@ function onInput() {
     hideSuggest()
     return
   }
-  const term = q.toLowerCase()
-  const list = snippets.filter((s) => s.trigger.toLowerCase().startsWith(term))
+  const list = autocompleteSuggestions(
+    q,
+    snippets,
+    settings.triggerPrefix,
+    settings.autocompleteMaxItems || 8
+  )
   if (!list.length) hideSuggest()
   else {
     const limit = Math.max(1, Number(settings.autocompleteMaxItems || 8))
@@ -219,9 +258,31 @@ browser.storage.onChanged.addListener((changes, area) => {
   if (area !== 'local' && area !== 'sync') return
   if (changes[STORAGE_KEYS.settings]?.newValue) {
     settings = { ...DEFAULT_SETTINGS, ...(changes[STORAGE_KEYS.settings].newValue as Settings) }
+    siteActive = isSiteEnabledForSettings(location.hostname, settings)
+    if (!siteActive) hideSuggest()
   }
   if (changes[STORAGE_KEYS.snippets]?.newValue) {
     snippets = changes[STORAGE_KEYS.snippets].newValue as Snippet[]
+    // If suggestions are visible, refresh them to reflect updated snippets
+    if (suggestEl) {
+      const token = currentToken()
+      const q = token.trim()
+      if (!q || !q.startsWith(settings.triggerPrefix)) {
+        hideSuggest()
+      } else {
+        const term = q.toLowerCase()
+        const list = snippets.filter((s) => s.trigger.toLowerCase().startsWith(term))
+        if (!list.length) hideSuggest()
+        else {
+          const limit = Math.max(1, Number(settings.autocompleteMaxItems || 8))
+          suggestItems = list.slice(0, limit)
+          suggestIndex = 0
+          renderSuggest()
+          const el = getActiveEditable()
+          if (el) positionSuggest(el)
+        }
+      }
+    }
   }
 })
 
@@ -238,7 +299,7 @@ async function init() {
   window.addEventListener(
     'keypress',
     (e) => {
-      if (!settings.enabled || !settings.autocompleteEnabled) return
+      if (!isAutocompleteEnabledOnSite(location.hostname, settings)) return
       if (e.key === settings.triggerPrefix) {
         const target = getActiveEditable()
         if (!target) return

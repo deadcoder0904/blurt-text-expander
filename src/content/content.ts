@@ -288,16 +288,35 @@ async function init() {
     },
     true
   )
-  // When trigger prefix is pressed, show suggestion list
+  // When trigger prefix is pressed, show suggestion list (use keydown for better cross-site consistency)
   window.addEventListener(
-    'keypress',
+    'keydown',
     (e) => {
       if (!isAutocompleteEnabledOnSite(location.hostname, settings)) return
-      if ((e as KeyboardEvent).isComposing) return
-      if (e.key === settings.triggerPrefix) {
+      const ke = e as KeyboardEvent
+      if (ke.isComposing || ke.key === 'Process') return
+      if (ke.key === settings.triggerPrefix) {
         const target = getActiveEditable()
         if (!target) return
         showSuggest(target, snippets)
+      }
+    },
+    true
+  )
+
+  // Attach listeners directly on shadow roots where focus occurs to avoid event retargeting issues
+  const attached = new WeakSet<ShadowRoot>()
+  window.addEventListener(
+    'focusin',
+    () => {
+      const target = getActiveEditable()
+      if (!target) return
+      const root = target.getRootNode()
+      if (root instanceof ShadowRoot && !attached.has(root)) {
+        root.addEventListener('keydown', (e) => onKeydown(e as unknown as KeyboardEvent), true)
+        root.addEventListener('input', (_e) => onInput(), true)
+        root.addEventListener('blur', () => hideSuggest(), true)
+        attached.add(root)
       }
     },
     true

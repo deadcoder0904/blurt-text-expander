@@ -31,7 +31,7 @@ function deepActiveElement(root: Document | ShadowRoot): Element | null {
   // Traverse into shadow DOMs
   // eslint-disable-next-line no-constant-condition
   while (a && (a as HTMLElement).shadowRoot && (a as HTMLElement).shadowRoot?.activeElement) {
-    a = (a as HTMLElement).shadowRoot!.activeElement
+    a = ((a as HTMLElement).shadowRoot?.activeElement as Element | null) ?? a
   }
   // Dive into iframes if same-origin (best effort)
   try {
@@ -172,7 +172,7 @@ export function replaceRangeWithText(
       let prev: Node | null = node
       while (prev && !prev.previousSibling) prev = prev.parentNode
       prev = prev?.previousSibling || null
-      while (prev && prev.lastChild) prev = prev.lastChild
+      while (prev?.lastChild) prev = prev.lastChild
       // Set defaults for next loop
       if (prev && prev.nodeType === Node.TEXT_NODE) {
         node = prev
@@ -260,7 +260,6 @@ export function getCaretClientRect(target: HTMLElement): DOMRect {
       'boxSizing',
     ] as const
     for (const prop of propsToCopy) {
-      // @ts-ignore dynamic style assignment
       mirrorStyles[prop] = style[prop]
     }
 

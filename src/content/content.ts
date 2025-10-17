@@ -12,7 +12,12 @@ import {
   getSnippets as loadSnippetsLocal,
 } from '../shared/storage'
 import type { Settings, Snippet } from '../shared/types'
-import { getActiveEditable, getWordBeforeCaret, replaceRangeWithText } from '../shared/utils'
+import {
+  getActiveEditable,
+  getCaretClientRect,
+  getWordBeforeCaret,
+  replaceRangeWithText,
+} from '../shared/utils'
 
 let settings: Settings = { ...DEFAULT_SETTINGS }
 let snippets: Snippet[] = []
@@ -49,6 +54,8 @@ function shouldAutoExpandOnKey(evt: KeyboardEvent): boolean {
 
 function onKeydown(evt: KeyboardEvent) {
   if (!siteActive) return
+  // Avoid interfering with IME composition
+  if (evt.isComposing || evt.key === 'Process') return
   const target = getActiveEditable()
   if (!target) return
   // Handle suggestion navigation if open
@@ -94,46 +101,24 @@ function desiredPlacement(target: HTMLElement, el: HTMLElement): 'top' | 'bottom
   const pref = (settings.autocompletePosition || 'auto') as 'auto' | 'top' | 'bottom'
   if (pref === 'top' || pref === 'bottom') return pref
   // auto: flip to top if not enough space below
-  const rect = getCaretOrElementRect(target)
+  const rect = getCaretClientRect(target)
   const estimated = Math.min(240, el.clientHeight || 240)
   const spaceBelow = window.innerHeight - rect.bottom
   return spaceBelow < estimated + 8 ? 'top' : 'bottom'
 }
 
-function getCaretOrElementRect(target: HTMLElement): DOMRect {
-  // Prefer caret rect for contentEditable
-  if (target.isContentEditable) {
-    const sel = window.getSelection()
-    if (sel && sel.rangeCount > 0) {
-      const range = sel.getRangeAt(0)
-      // Ensure the range belongs to this target
-      if (target.contains(range.endContainer)) {
-        const r = range.cloneRange()
-        r.collapse(false)
-        const rects = r.getClientRects()
-        const last = rects.length ? rects[rects.length - 1] : r.getBoundingClientRect()
-        if (last && (last.width || last.height)) return last as DOMRect
-      }
-    }
-  }
-  return target.getBoundingClientRect()
-}
-
 function positionSuggest(target: HTMLElement) {
   if (!suggestEl) return
-  const rect = getCaretOrElementRect(target)
+  const rect = getCaretClientRect(target)
   const place = desiredPlacement(target, suggestEl)
-  let top =
-    place === 'bottom'
-      ? rect.bottom + window.scrollY
-      : rect.top + window.scrollY - suggestEl.offsetHeight
-  let left = rect.left + window.scrollX
-  // Clamp within viewport bounds
-  const maxTop = window.scrollY + window.innerHeight - (suggestEl.offsetHeight || 240) - 8
-  const minTop = Math.max(0, window.scrollY)
+  let top = place === 'bottom' ? rect.bottom : rect.top - suggestEl.offsetHeight
+  let left = rect.left
+  // Clamp within viewport bounds (fixed positioning)
+  const maxTop = window.innerHeight - (suggestEl.offsetHeight || 240) - 8
+  const minTop = 0
   top = Math.max(minTop, Math.min(maxTop, top))
-  const maxLeft = window.scrollX + window.innerWidth - (suggestEl.offsetWidth || 240) - 8
-  left = Math.max(window.scrollX, Math.min(maxLeft, left))
+  const maxLeft = window.innerWidth - (suggestEl.offsetWidth || 240) - 8
+  left = Math.max(0, Math.min(maxLeft, left))
   suggestEl.style.top = `${top}px`
   suggestEl.style.left = `${left}px`
 }
@@ -182,7 +167,7 @@ function showSuggest(target: HTMLElement, list: Snippet[]) {
   const panelText = mode === 'light' ? '#111827' : '#e5e7eb'
   const panelBorder = mode === 'light' ? '#e5e7eb' : '#2b2d31'
   Object.assign(suggestEl.style, {
-    position: 'absolute',
+    position: 'fixed',
     zIndex: '2147483647',
     background: panelBg,
     color: panelText,
@@ -295,11 +280,20 @@ async function init() {
     const target = getActiveEditable()
     if (target && suggestEl) positionSuggest(target)
   })
+  window.addEventListener(
+    'scroll',
+    () => {
+      const target = getActiveEditable()
+      if (target && suggestEl) positionSuggest(target)
+    },
+    true
+  )
   // When trigger prefix is pressed, show suggestion list
   window.addEventListener(
     'keypress',
     (e) => {
       if (!isAutocompleteEnabledOnSite(location.hostname, settings)) return
+      if ((e as KeyboardEvent).isComposing) return
       if (e.key === settings.triggerPrefix) {
         const target = getActiveEditable()
         if (!target) return

@@ -2,7 +2,7 @@ import browser from 'webextension-polyfill'
 
 import { DEFAULT_SETTINGS, STORAGE_KEYS } from '../shared/constants'
 // keep local qs helper in this module for minimal diff
-import { ICON_DELETE, ICON_EDIT } from '../shared/icons'
+import { ICON_DELETE, ICON_DRAG_HANDLE, ICON_EDIT } from '../shared/icons'
 import { IMPORT_FILENAME, isValidImportFilename } from '../shared/import'
 import { canSaveSnippet, retargetTriggers } from '../shared/logic'
 import {
@@ -42,7 +42,10 @@ function renderList() {
   list.innerHTML = ''
   for (const s of snippets) {
     const row = document.createElement('div')
-    row.className = 'flex items-center justify-between gap-3 p-3 cursor-pointer'
+    row.className =
+      'snippet-row flex items-center gap-3 justify-between p-3 cursor-grab border border-transparent'
+    row.draggable = true
+    row.dataset.id = s.id
     // Prevent layout shift when active by reserving right border space always
     Object.assign(row.style, {
       borderRight: '3px solid transparent',
@@ -55,8 +58,17 @@ function renderList() {
         borderRight: '3px solid #ff4500',
       } as CSSStyleDeclaration)
     }
+
+    const handle = document.createElement('button')
+    handle.type = 'button'
+    handle.className =
+      'drag-handle shrink-0 p-2 rounded text-(--color-muted) hover:text-(--color-accent) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--color-accent)'
+    handle.innerHTML = ICON_DRAG_HANDLE
+    handle.title = 'Drag to reorder'
+    handle.tabIndex = -1
+
     const left = document.createElement('div')
-    left.className = 'min-w-0'
+    left.className = 'min-w-0 flex-1'
     const trig = document.createElement('div')
     trig.className = 'font-mono text-[13px] truncate'
     trig.textContent = s.trigger
@@ -64,8 +76,9 @@ function renderList() {
     desc.className = 'text-sm text-(--color-muted) truncate'
     desc.textContent = s.description ?? ''
     left.append(trig, desc)
+
     const actions = document.createElement('div')
-    actions.className = 'flex items-center gap-2'
+    actions.className = 'flex items-center gap-2 shrink-0'
     const editBtn = document.createElement('button')
     editBtn.className =
       'p-2 rounded hover:bg-(--color-panel-2) text-(--color-muted) hover:text-(--color-accent)'
@@ -99,15 +112,103 @@ function renderList() {
       renderList()
     })
     actions.append(editBtn, delBtn)
-    row.append(left, actions)
+    row.append(handle, left, actions)
     // Clicking anywhere on the row (except delete) opens the editor
     row.addEventListener('click', () => editSnippet(s.id))
     list.appendChild(row)
   }
+  attachDragHandlers(list)
   // Overlap warnings
   const warnings = detectOverlapWarnings(snippets)
   const warnEl = qs<HTMLDivElement>('#overlapWarning')
-  warnEl.textContent = warnings.length ? warnings.join(' • ') : ''
+  const hasWarnings = warnings.length > 0
+  warnEl.textContent = hasWarnings ? warnings.join(' • ') : ''
+  warnEl.classList.toggle('hidden', !hasWarnings)
+}
+
+function getDragAfterElement(container: HTMLElement, mouseY: number) {
+  const rows = Array.from(container.querySelectorAll<HTMLElement>('.snippet-row:not(.is-dragging)'))
+  return rows.reduce<{ offset: number; element: HTMLElement | null }>(
+    (closest, child) => {
+      const box = child.getBoundingClientRect()
+      const offset = mouseY - box.top - box.height / 2
+      if (offset < 0 && offset > closest.offset) return { offset, element: child }
+      return closest
+    },
+    { offset: Number.NEGATIVE_INFINITY, element: null }
+  ).element
+}
+
+async function persistOrderFromDom(container: HTMLElement, preferId?: string | null) {
+  const orderedIds = Array.from(container.querySelectorAll<HTMLElement>('.snippet-row'))
+    .map((el) => el.dataset.id)
+    .filter(Boolean) as string[]
+  const nextSnips = orderedIds
+    .map((id) => snippets.find((s) => s.id === id))
+    .filter(Boolean) as Snippet[]
+
+  // Skip write if order is unchanged
+  const unchanged =
+    nextSnips.length === snippets.length && nextSnips.every((s, idx) => s.id === snippets[idx]?.id)
+  if (!unchanged) {
+    snippets = nextSnips
+    await saveSnippets(snippets)
+  }
+
+  const activeId = preferId && snippets.some((s) => s.id === preferId) ? preferId : currentId
+  if (activeId && snippets.some((s) => s.id === activeId)) {
+    currentId = activeId
+  } else if (snippets.length > 0) {
+    currentId = snippets[0].id
+  } else {
+    currentId = null
+  }
+
+  renderList()
+}
+
+function attachDragHandlers(list: HTMLDivElement) {
+  if (list.dataset.dragBound === 'true') return
+  list.dataset.dragBound = 'true'
+
+  list.addEventListener('dragstart', (e) => {
+    const row = (e.target as HTMLElement | null)?.closest('.snippet-row') as HTMLElement | null
+    if (!row) return
+    row.classList.add('is-dragging')
+    if (e.dataTransfer) {
+      e.dataTransfer.setData('text/plain', row.dataset.id ?? '')
+      e.dataTransfer.setDragImage(row, 0, 0)
+      e.dataTransfer.effectAllowed = 'move'
+    }
+  })
+
+  list.addEventListener('dragover', (e) => {
+    e.preventDefault()
+    const after = getDragAfterElement(list, e.clientY)
+    const active = list.querySelector<HTMLElement>('.snippet-row.is-dragging')
+    if (!active) return
+    if (!after) list.appendChild(active)
+    else list.insertBefore(active, after)
+  })
+
+  list.addEventListener('dragleave', () => {
+    /* optional highlight cleanup */
+  })
+
+  list.addEventListener('drop', async (e) => {
+    e.preventDefault()
+    const active = list.querySelector<HTMLElement>('.snippet-row.is-dragging')
+    const id = active?.dataset.id ?? null
+    active?.classList.remove('is-dragging')
+    await persistOrderFromDom(list, id)
+  })
+
+  list.addEventListener('dragend', async () => {
+    const active = list.querySelector<HTMLElement>('.snippet-row.is-dragging')
+    const id = active?.dataset.id ?? null
+    active?.classList.remove('is-dragging')
+    await persistOrderFromDom(list, id)
+  })
 }
 
 function clearEditor() {

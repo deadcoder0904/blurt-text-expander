@@ -115,8 +115,34 @@ export function replaceRangeWithText(
   end: number,
   replacement: string
 ) {
+  // Helper: ensure React/controlled inputs see the change
+  function syncInputEvent(el: HTMLElement) {
+    try {
+      if (el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement) {
+        // Use native value setter so React tracks the update
+        const proto = el instanceof HTMLTextAreaElement
+          ? HTMLTextAreaElement.prototype
+          : HTMLInputElement.prototype
+        const desc = Object.getOwnPropertyDescriptor(proto, 'value')
+        desc?.set?.call(el, (el as HTMLInputElement | HTMLTextAreaElement).value)
+      }
+      // Fire an input event that bubbles (and crosses shadow DOM)
+      const ie = new InputEvent('input', {
+        bubbles: true,
+        composed: true,
+        inputType: 'insertFromPaste',
+        data: replacement,
+      })
+      el.dispatchEvent(ie)
+      // Also emit a change event for libraries that listen to it
+      el.dispatchEvent(new Event('change', { bubbles: true }))
+    } catch {}
+  }
+
   if (element instanceof HTMLInputElement || element instanceof HTMLTextAreaElement) {
     element.setRangeText(replacement, start, end, 'end')
+    // Notify any controlled layer (e.g., React) immediately
+    syncInputEvent(element)
     return
   }
   const sel = selectionForNode(element)
@@ -130,6 +156,7 @@ export function replaceRangeWithText(
     if (typeof sel.modify === 'function') {
       for (let i = 0; i < toDelete; i++) sel.modify('extend', 'backward', 'character')
       document.execCommand('insertText', false, replacement)
+      syncInputEvent(element)
       return
     }
   } catch {}
@@ -146,6 +173,7 @@ export function replaceRangeWithText(
       sel.removeAllRanges()
       sel.addRange(r)
       document.execCommand('insertText', false, replacement)
+      syncInputEvent(element)
       return
     }
   } catch {}
@@ -191,6 +219,7 @@ export function replaceRangeWithText(
     after.setStartAfter(r.startContainer)
     after.collapse(true)
     sel.addRange(after)
+    syncInputEvent(element)
     return
   } catch {}
 }

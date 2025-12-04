@@ -3,3 +3,6 @@ export const ICON_EDIT =
 
 export const ICON_DELETE =
   '<svg viewBox="0 0 24 24" fill="currentColor" class="size-5"><g fill="none"><path d="M20 5a1 1 0 1 1 0 2h-1l-.003.071-.933 13.071A2 2 0 0 1 16.069 22H7.93a2 2 0 0 1-1.995-1.858l-.933-13.07L5 7H4a1 1 0 0 1 0-2zm-6-3a1 1 0 1 1 0 2h-4a1 1 0 0 1 0-2z" fill="currentColor"/></g></svg>'
+
+export const ICON_DRAG_HANDLE =
+  '<svg viewBox="0 0 24 24" fill="currentColor" class="size-5"><path d="M9 6a1 1 0 1 1-2 0 1 1 0 0 1 2 0zm8 0a1 1 0 1 1-2 0 1 1 0 0 1 2 0zM9 12a1 1 0 1 1-2 0 1 1 0 0 1 2 0zm8 0a1 1 0 1 1-2 0 1 1 0 0 1 2 0zM9 18a1 1 0 1 1-2 0 1 1 0 0 1 2 0zm8 0a1 1 0 1 1-2 0 1 1 0 0 1 2 0z"/></svg>'

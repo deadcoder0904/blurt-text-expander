@@ -75,3 +75,47 @@ textarea::-webkit-scrollbar-thumb {
 textarea::-webkit-scrollbar-track {
   background: transparent;
 }
+
+.scrollbar-hover {
+  scrollbar-width: thin;
+}
+
+.scrollbar-hover::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+}
+
+.scrollbar-hover:hover::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+.scrollbar-hover::-webkit-scrollbar-thumb {
+  background-color: rgba(255, 255, 255, 0.25);
+  border-radius: 8px;
+}
+
+.scrollbar-hover::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.snippet-row {
+  transition: background-color 120ms ease, border-color 120ms ease, opacity 120ms ease;
+}
+
+.snippet-row:hover {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.snippet-row.is-dragging {
+  opacity: 0.6;
+  cursor: grabbing;
+}
+
+.drag-handle {
+  cursor: grab;
+}
+
+.drag-handle:active {
+  cursor: grabbing;
+}

@@ -120,9 +120,10 @@ export function replaceRangeWithText(
     try {
       if (el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement) {
         // Use native value setter so React tracks the update
-        const proto = el instanceof HTMLTextAreaElement
-          ? HTMLTextAreaElement.prototype
-          : HTMLInputElement.prototype
+        const proto =
+          el instanceof HTMLTextAreaElement
+            ? HTMLTextAreaElement.prototype
+            : HTMLInputElement.prototype
         const desc = Object.getOwnPropertyDescriptor(proto, 'value')
         desc?.set?.call(el, (el as HTMLInputElement | HTMLTextAreaElement).value)
       }

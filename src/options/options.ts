@@ -253,7 +253,9 @@ async function saveSnippet() {
   if (currentId) {
     snippets = snippets.map((s) => (s.id === currentId ? { ...s, trigger, description, body } : s))
   } else {
-    snippets = [{ id: crypto.randomUUID(), trigger, description, body }, ...snippets]
+    const id = crypto.randomUUID()
+    snippets = [{ id, trigger, description, body }, ...snippets]
+    currentId = id
   }
   await saveSnippets(snippets)
   renderList()

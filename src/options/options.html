@@ -1,355 +1,323 @@
 <!doctype html>
 <html>
-    <head>
-        <meta charset="utf-8" />
-        <meta name="viewport" content="width=device-width, initial-scale=1" />
-        <title>Blurt: Text Expander — Settings</title>
-        <link rel="stylesheet" href="styles/options.css" />
-    </head>
-    <body
-        class="h-screen bg-(--color-bg) text-(--color-text) font-sans text-[14px] leading-6"
-        data-theme="dark"
-    >
-        <div class="h-full w-full p-6 grid grid-rows-[auto_auto_1fr]">
-            <header class="mb-3 flex items-center justify-between">
-                <h1 class="text-xl font-semibold">
-                    Blurt: Text Expander — Settings
-                </h1>
-                <button
-                    id="openSettingsGear"
-                    class="p-2 rounded hover:bg-(--color-panel)"
-                    title="Preferences"
-                >
-                    <svg
-                        viewBox="0 0 38 38"
-                        fill="currentColor"
-                        xmlns="http://www.w3.org/2000/svg"
-                        class="size-5"
-                    >
-                        <path
-                            d="M21.5 0a3 3 0 0 1 3 3v.97q.63.232 1.238.514l.687-.687a3 3 0 0 1 4.242 0l3.536 3.536a3 3 0 0 1 0 4.242l-.687.687q.283.608.514 1.239L35 13.5a3 3 0 0 1 3 3v5a3 3 0 0 1-3 3h-.97q-.231.63-.514 1.238l.687.687a3 3 0 0 1 0 4.242l-3.536 3.536a3 3 0 0 1-4.242 0l-.687-.687q-.608.283-1.238.513V35a3 3 0 0 1-3 3h-5a3 3 0 0 1-3-3v-.97q-.63-.23-1.238-.514l-.687.687a3 3 0 0 1-4.242 0l-3.536-3.536a3 3 0 0 1 0-4.242l.687-.687q-.283-.608-.513-1.238H3a3 3 0 0 1-3-3v-5a3 3 0 0 1 3-3h.97q.23-.63.514-1.238l-.687-.687a3 3 0 0 1 0-4.242l3.536-3.536a3 3 0 0 1 4.242 0l.687.687q.406-.189.82-.354l.419-.16L13.5 3a3 3 0 0 1 3-3zM19 12a7 7 0 1 0 0 14 7 7 0 0 0 0-14"
-                        />
-                    </svg>
-                </button>
-            </header>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Blurt: Text Expander — Settings</title>
+    <link rel="stylesheet" href="styles/options.css" />
+  </head>
+  <body
+    class="h-screen bg-(--color-bg) text-(--color-text) font-sans text-[14px] leading-6"
+    data-theme="dark"
+  >
+    <div class="h-full w-full p-6 grid grid-rows-[auto_auto_1fr]">
+      <header class="mb-3 flex items-center justify-between">
+        <h1 class="text-xl font-semibold">Blurt: Text Expander — Settings</h1>
+        <button
+          id="openSettingsGear"
+          class="p-2 rounded hover:bg-(--color-panel)"
+          title="Preferences"
+        >
+          <svg
+            viewBox="0 0 38 38"
+            fill="currentColor"
+            xmlns="http://www.w3.org/2000/svg"
+            class="size-5"
+          >
+            <path
+              d="M21.5 0a3 3 0 0 1 3 3v.97q.63.232 1.238.514l.687-.687a3 3 0 0 1 4.242 0l3.536 3.536a3 3 0 0 1 0 4.242l-.687.687q.283.608.514 1.239L35 13.5a3 3 0 0 1 3 3v5a3 3 0 0 1-3 3h-.97q-.231.63-.514 1.238l.687.687a3 3 0 0 1 0 4.242l-3.536 3.536a3 3 0 0 1-4.242 0l-.687-.687q-.608.283-1.238.513V35a3 3 0 0 1-3 3h-5a3 3 0 0 1-3-3v-.97q-.63-.23-1.238-.514l-.687.687a3 3 0 0 1-4.242 0l-3.536-3.536a3 3 0 0 1 0-4.242l.687-.687q-.283-.608-.513-1.238H3a3 3 0 0 1-3-3v-5a3 3 0 0 1 3-3h.97q.23-.63.514-1.238l-.687-.687a3 3 0 0 1 0-4.242l3.536-3.536a3 3 0 0 1 4.242 0l.687.687q.406-.189.82-.354l.419-.16L13.5 3a3 3 0 0 1 3-3zM19 12a7 7 0 1 0 0 14 7 7 0 0 0 0-14"
+            />
+          </svg>
+        </button>
+      </header>
 
-            <div class="mb-6">
-                <button
-                    id="newSnippet"
-                    class="px-4 py-2 rounded bg-(--color-accent) text-white hover:bg-(--color-accent-hover)"
-                >
-                    Create new snippet
-                </button>
-            </div>
+      <div class="mb-6">
+        <button
+          id="newSnippet"
+          class="px-4 py-2 rounded bg-(--color-accent) text-white hover:bg-(--color-accent-hover)"
+        >
+          Create new snippet
+        </button>
+      </div>
 
-            <section
-                class="grid grid-cols-1 md:grid-cols-[320px_minmax(0,1fr)] gap-6 overflow-hidden min-h-0"
-            >
-                <!-- Sticky, scrollable snippets sidebar -->
-                <div class="relative flex flex-col min-h-0 h-full">
-                    <div class="text-sm text-(--color-muted) mb-2">
-                        Snippets
-                    </div>
-                    <div
-                        id="overlapWarning"
-                        class="text-xs text-yellow-400 mb-2 hidden"
-                    ></div>
-                    <div class="flex-1 min-h-0 h-full">
-                        <div
-                            id="list"
-                            class="bg-(--color-panel) border border-(--color-border) rounded divide-y divide-(--color-border) overflow-auto h-full scrollbar-hover"
-                        ></div>
-                    </div>
-                </div>
-                <!-- Editor with sticky header and scrollable body -->
-                <div class="flex flex-col min-h-0 h-full">
-                    <div class="text-sm text-(--color-muted) mb-2">Editor</div>
-                    <div
-                        class="bg-(--color-panel) border border-(--color-border) rounded flex flex-col min-h-0 h-full"
-                    >
-                        <div
-                            class="px-4 py-3 border-b border-(--color-border) sticky top-0 bg-(--color-panel) z-10 flex items-end justify-between gap-4"
-                        >
-                            <div
-                                class="flex-1 grid grid-cols-1 md:grid-cols-2 gap-3"
-                            >
-                                <div>
-                                    <label class="block text-xs mb-1"
-                                        >Trigger</label
-                                    >
-                                    <input
-                                        id="trigger"
-                                        type="text"
-                                        tabindex="1"
-                                        class="w-full px-3 py-2 rounded bg-(--color-panel-2) border border-(--color-border)"
-                                        placeholder="/sig"
-                                    />
-                                </div>
-                                <div>
-                                    <label class="block text-xs mb-1"
-                                        >Description (optional)</label
-                                    >
-                                    <input
-                                        id="description"
-                                        type="text"
-                                        tabindex="2"
-                                        class="w-full px-3 py-2 rounded bg-(--color-panel-2) border border-(--color-border)"
-                                        placeholder="Signature snippet"
-                                    />
-                                </div>
-                            </div>
-                            <div
-                                class="flex items-center gap-2 ml-2 self-end pb-1"
-                            >
-                                <button
-                                    id="save"
-                                    tabindex="4"
-                                    class="px-4 py-2 rounded bg-(--color-accent) text-white hover:bg-(--color-accent-hover) disabled:opacity-60 disabled:cursor-not-allowed"
-                                    disabled
-                                >
-                                    Save
-                                </button>
-                                <button
-                                    id="cancel"
-                                    tabindex="5"
-                                    class="px-4 py-2 rounded border border-(--color-border) bg-(--color-panel) hover:bg-(--color-panel-2)"
-                                >
-                                    Cancel
-                                </button>
-                            </div>
-                        </div>
-                        <div
-                            class="p-4 flex-1 min-h-0 overflow-hidden flex flex-col"
-                        >
-                            <label class="block text-sm mb-1">Body</label>
-                            <textarea
-                                id="body"
-                                tabindex="3"
-                                class="w-full flex-1 min-h-0 px-3 py-2 rounded bg-(--color-panel-2) border border-(--color-border) font-mono resize-none overflow-auto scrollbar-hover"
-                            ></textarea>
-                            <div
-                                class="flex items-center justify-between text-sm mt-2"
-                            >
-                                <div id="counter" class="text-(--color-muted)">
-                                    0 / 5000 characters
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </section>
-
-            <!-- Modal: Settings & Import/Export -->
-            <div id="settingsModal" class="hidden fixed inset-0 z-50">
-                <div
-                    id="settingsBackdrop"
-                    class="absolute inset-0 bg-black/50"
-                ></div>
-                <div
-                    id="settingsDialog"
-                    role="dialog"
-                    aria-modal="true"
-                    tabindex="-1"
-                    class="relative mx-auto mt-20 max-w-3xl bg-(--color-panel) border border-(--color-border) rounded shadow-xl max-h-[80vh] overflow-auto"
-                >
-                    <div
-                        class="px-6 py-4 border-b border-(--color-border) flex items-center justify-between"
-                    >
-                        <h2 class="text-lg font-semibold">Preferences</h2>
-                        <button
-                            id="settingsClose"
-                            class="p-2 rounded hover:bg-(--color-panel-2)"
-                            title="Close"
-                            aria-label="Close"
-                        >
-                            ✕
-                        </button>
-                    </div>
-                    <div class="p-8">
-                        <div class="mb-4 flex items-center gap-2" role="tablist">
-                            <button id="tabBtnGeneral" role="tab" aria-selected="true" class="px-3 py-1.5 rounded border-b-2 border-(--color-accent) bg-(--color-panel-2)">General</button>
-                            <button id="tabBtnAdvanced" role="tab" aria-selected="false" class="px-3 py-1.5 rounded border-b-2 border-transparent hover:bg-(--color-panel-2)">Advanced</button>
-                        </div>
-                        <div id="tabGeneral" class="space-y-0 divide-y divide-(--color-border)">
-                        <section class="space-y-4 py-5 first:pt-0">
-                            <h3
-                                class="text-sm font-semibold text-(--color-muted) mb-2"
-                            >
-                                General
-                            </h3>
-                            <div class="grid grid-cols-1 gap-4">
-                                <label
-                                    class="inline-flex w-max items-center gap-2 text-sm select-none cursor-pointer"
-                                >
-                                    <span>Activate Blurt</span>
-                                    <input
-                                        type="checkbox"
-                                        id="enabled"
-                                        class="size-4 accent-(--color-accent)"
-                                    />
-                                </label>
-                                <label
-                                    class="flex items-center gap-2 text-sm select-none"
-                                >
-                                    <span>Theme</span>
-                                    <select
-                                        id="theme"
-                                        class="px-2 py-1.5 rounded bg-(--color-panel-2) border border-(--color-border)"
-                                    >
-                                        <option value="system">System</option>
-                                        <option value="dark">Dark</option>
-                                        <option value="light">Light</option>
-                                    </select>
-                                </label>
-                                <label
-                                    class="flex items-center gap-2 text-sm select-none"
-                                >
-                                    <span>Trigger prefix</span>
-                                    <input
-                                        id="prefix"
-                                        type="text"
-                                        value="/"
-                                        maxlength="2"
-                                        class="w-12 px-2 py-1.5 rounded bg-(--color-panel-2) border border-(--color-border) text-center"
-                                    />
-                                </label>
-                            </div>
-                        </section>
-                        <section class="space-y-4 py-5">
-                            <h3
-                                class="text-sm font-semibold text-(--color-muted) mb-2"
-                            >
-                                Typing
-                            </h3>
-                            <div class="grid grid-cols-1 gap-4">
-                                <div
-                                    class="flex items-center gap-3 text-sm select-none"
-                                >
-                                    <div class="shrink-0">Expansion key</div>
-                                    <input
-                                        id="expansionKeyInput"
-                                        type="text"
-                                        inputmode="none"
-                                        readonly
-                                        class="px-3 py-1.5 rounded bg-(--color-panel-2) border border-(--color-border) w-56 text-center font-mono"
-                                        placeholder="Press a key…"
-                                    />
-                                    <div
-                                        id="expansionKeyHint"
-                                        class="text-(--color-muted) min-w-[180px]"
-                                    >
-                                        Auto: Space/Enter when empty
-                                    </div>
-                                </div>
-                                <label
-                                    for="autocomplete"
-                                    class="inline-flex w-max items-center gap-3 text-sm select-none cursor-pointer"
-                                >
-                                    <div class="shrink-0">Autocomplete</div>
-                                    <input
-                                        type="checkbox"
-                                        id="autocomplete"
-                                        class="size-4 accent-(--color-accent)"
-                                    />
-                                    <div class="text-(--color-muted)">
-                                        Show suggestions when typing the prefix
-                                    </div>
-                                </label>
-                                <div
-                                    class="flex items-center gap-3 text-sm select-none"
-                                >
-                                    <div class="shrink-0">Max suggestions</div>
-                                    <input
-                                        id="autoMax"
-                                        type="number"
-                                        min="1"
-                                        max="20"
-                                        step="1"
-                                        class="w-20 px-2 py-1.5 rounded bg-(--color-panel-2) border border-(--color-border) text-center"
-                                    />
-                                    <div class="text-(--color-muted)">
-                                        Limit suggestions count
-                                    </div>
-                                </div>
-                                <div
-                                    class="flex items-center gap-3 text-sm select-none"
-                                >
-                                    <div class="shrink-0">
-                                        Autocomplete position
-                                    </div>
-                                    <select
-                                        id="autoPos"
-                                        class="px-2 py-1.5 rounded bg-(--color-panel-2) border border-(--color-border)"
-                                    >
-                                        <option value="auto">Auto</option>
-                                        <option value="top">Above</option>
-                                        <option value="bottom">Below</option>
-                                    </select>
-                                    <div class="text-(--color-muted)">
-                                        Prefer where suggestions appear
-                                    </div>
-                                </div>
-                            </div>
-                        </section>
-                        <section class="space-y-4 py-5">
-                            <h3
-                                class="text-sm font-semibold text-(--color-muted) mb-2"
-                            >
-                                Limits
-                            </h3>
-                            <div
-                                class="flex items-center gap-3 text-sm select-none"
-                            >
-                                <div class="shrink-0">Character limit</div>
-                                <input
-                                    id="charLimit"
-                                    type="number"
-                                    min="0"
-                                    max="10000"
-                                    step="50"
-                                    class="w-28 px-2 pr-6 py-1.5 rounded bg-(--color-panel-2) border border-(--color-border) text-center"
-                                />
-                                <div class="text-(--color-muted)">
-                                    Max characters per snippet body
-                                </div>
-                            </div>
-                        </section>
-                        </div>
-                        <div id="tabAdvanced" class="space-y-0 divide-y divide-(--color-border) hidden">
-                            <section class="space-y-4 py-5 first:pt-0">
-                                <h3 class="text-sm font-semibold text-(--color-muted) mb-2">Sites</h3>
-                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <div class="flex flex-col gap-2">
-                                        <label class="text-sm">Allow list (one host per line)</label>
-                                        <textarea id="allowlist" class="min-h-28 px-3 py-2 rounded bg-(--color-panel-2) border border-(--color-border) font-mono text-xs" placeholder="app.example.com"></textarea>
-                                    </div>
-                                    <div class="flex flex-col gap-2">
-                                        <label class="text-sm">Block list (one host per line)</label>
-                                        <textarea id="blocklist" class="min-h-28 px-3 py-2 rounded bg-(--color-panel-2) border border-(--color-border) font-mono text-xs" placeholder="app.bive.com"></textarea>
-                                    </div>
-                                </div>
-                                <div class="text-xs text-(--color-muted)">Allow list takes precedence when non-empty; block list always disables a matching host.</div>
-                            </section>
-                            <section class="space-y-4 py-5 last:pb-0">
-                                <h3 class="text-sm font-semibold text-(--color-muted) mb-2">Data</h3>
-                                <div class="flex items-center gap-3">
-                                    <button id="importBtn" class="px-4 py-2 rounded border border-(--color-border) bg-(--color-panel-2) hover:bg-(--color-panel)">Import snippets (JSON)</button>
-                                    <button id="exportBtn" class="px-4 py-2 rounded bg-(--color-accent) text-white hover:bg-(--color-accent-hover)">Export snippets (JSON)</button>
-                                    <input id="fileInput" type="file" accept="application/json" class="hidden" />
-                                </div>
-                            </section>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
+      <section
+        class="grid grid-cols-1 md:grid-cols-[320px_minmax(0,1fr)] gap-6 overflow-hidden min-h-0"
+      >
+        <!-- Sticky, scrollable snippets sidebar -->
+        <div class="relative flex flex-col min-h-0 h-full">
+          <div class="text-sm text-(--color-muted) mb-2">Snippets</div>
+          <div id="overlapWarning" class="text-xs text-yellow-400 mb-2 hidden"></div>
+          <div class="flex-1 min-h-0 h-full">
             <div
-                id="status"
-                role="status"
-                aria-live="polite"
-                class="min-h-[1.25em] text-right text-(--color-accent) text-sm mt-3"
+              id="list"
+              class="bg-(--color-panel) border border-(--color-border) rounded divide-y divide-(--color-border) overflow-auto h-full scrollbar-hover"
             ></div>
+          </div>
         </div>
-        <script src="options.js" type="module"></script>
-    </body>
+        <!-- Editor with sticky header and scrollable body -->
+        <div class="flex flex-col min-h-0 h-full">
+          <div class="text-sm text-(--color-muted) mb-2">Editor</div>
+          <div
+            class="bg-(--color-panel) border border-(--color-border) rounded flex flex-col min-h-0 h-full"
+          >
+            <div
+              class="px-4 py-3 border-b border-(--color-border) sticky top-0 bg-(--color-panel) z-10 flex items-end justify-between gap-4"
+            >
+              <div class="flex-1 grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div>
+                  <label class="block text-xs mb-1">Trigger</label>
+                  <input
+                    id="trigger"
+                    type="text"
+                    tabindex="1"
+                    class="w-full px-3 py-2 rounded bg-(--color-panel-2) border border-(--color-border)"
+                    placeholder="/sig"
+                  />
+                </div>
+                <div>
+                  <label class="block text-xs mb-1">Description (optional)</label>
+                  <input
+                    id="description"
+                    type="text"
+                    tabindex="2"
+                    class="w-full px-3 py-2 rounded bg-(--color-panel-2) border border-(--color-border)"
+                    placeholder="Signature snippet"
+                  />
+                </div>
+              </div>
+              <div class="flex items-center gap-2 ml-2 self-end pb-1">
+                <button
+                  id="save"
+                  tabindex="4"
+                  class="px-4 py-2 rounded bg-(--color-accent) text-white hover:bg-(--color-accent-hover) disabled:opacity-60 disabled:cursor-not-allowed"
+                  disabled
+                >
+                  Save
+                </button>
+                <button
+                  id="cancel"
+                  tabindex="5"
+                  class="px-4 py-2 rounded border border-(--color-border) bg-(--color-panel) hover:bg-(--color-panel-2)"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+            <div class="p-4 flex-1 min-h-0 overflow-hidden flex flex-col">
+              <label class="block text-sm mb-1">Body</label>
+              <textarea
+                id="body"
+                tabindex="3"
+                class="w-full flex-1 min-h-0 px-3 py-2 rounded bg-(--color-panel-2) border border-(--color-border) font-mono resize-none overflow-auto scrollbar-hover"
+              ></textarea>
+              <div class="flex items-center justify-between text-sm mt-2">
+                <div id="counter" class="text-(--color-muted)">0 / 5000 characters</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Modal: Settings & Import/Export -->
+      <div id="settingsModal" class="hidden fixed inset-0 z-50">
+        <div id="settingsBackdrop" class="absolute inset-0 bg-black/50"></div>
+        <div
+          id="settingsDialog"
+          role="dialog"
+          aria-modal="true"
+          tabindex="-1"
+          class="relative mx-auto mt-20 max-w-3xl bg-(--color-panel) border border-(--color-border) rounded shadow-xl max-h-[80vh] overflow-auto"
+        >
+          <div class="px-6 py-4 border-b border-(--color-border) flex items-center justify-between">
+            <h2 class="text-lg font-semibold">Preferences</h2>
+            <button
+              id="settingsClose"
+              class="p-2 rounded hover:bg-(--color-panel-2)"
+              title="Close"
+              aria-label="Close"
+            >
+              ✕
+            </button>
+          </div>
+          <div class="p-8">
+            <div class="mb-4 flex items-center gap-2" role="tablist">
+              <button
+                id="tabBtnGeneral"
+                role="tab"
+                aria-selected="true"
+                class="px-3 py-1.5 rounded border-b-2 border-(--color-accent) bg-(--color-panel-2)"
+              >
+                General
+              </button>
+              <button
+                id="tabBtnAdvanced"
+                role="tab"
+                aria-selected="false"
+                class="px-3 py-1.5 rounded border-b-2 border-transparent hover:bg-(--color-panel-2)"
+              >
+                Advanced
+              </button>
+            </div>
+            <div id="tabGeneral" class="space-y-0 divide-y divide-(--color-border)">
+              <section class="space-y-4 py-5 first:pt-0">
+                <h3 class="text-sm font-semibold text-(--color-muted) mb-2">General</h3>
+                <div class="grid grid-cols-1 gap-4">
+                  <label
+                    class="inline-flex w-max items-center gap-2 text-sm select-none cursor-pointer"
+                  >
+                    <span>Activate Blurt</span>
+                    <input type="checkbox" id="enabled" class="size-4 accent-(--color-accent)" />
+                  </label>
+                  <label class="flex items-center gap-2 text-sm select-none">
+                    <span>Theme</span>
+                    <select
+                      id="theme"
+                      class="px-2 py-1.5 rounded bg-(--color-panel-2) border border-(--color-border)"
+                    >
+                      <option value="system">System</option>
+                      <option value="dark">Dark</option>
+                      <option value="light">Light</option>
+                    </select>
+                  </label>
+                  <label class="flex items-center gap-2 text-sm select-none">
+                    <span>Trigger prefix</span>
+                    <input
+                      id="prefix"
+                      type="text"
+                      value="/"
+                      maxlength="2"
+                      class="w-12 px-2 py-1.5 rounded bg-(--color-panel-2) border border-(--color-border) text-center"
+                    />
+                  </label>
+                </div>
+              </section>
+              <section class="space-y-4 py-5">
+                <h3 class="text-sm font-semibold text-(--color-muted) mb-2">Typing</h3>
+                <div class="grid grid-cols-1 gap-4">
+                  <div class="flex items-center gap-3 text-sm select-none">
+                    <div class="shrink-0">Expansion key</div>
+                    <input
+                      id="expansionKeyInput"
+                      type="text"
+                      inputmode="none"
+                      readonly
+                      class="px-3 py-1.5 rounded bg-(--color-panel-2) border border-(--color-border) w-56 text-center font-mono"
+                      placeholder="Press a key…"
+                    />
+                    <div id="expansionKeyHint" class="text-(--color-muted) min-w-[180px]">
+                      Auto: Space/Enter when empty
+                    </div>
+                  </div>
+                  <label
+                    for="autocomplete"
+                    class="inline-flex w-max items-center gap-3 text-sm select-none cursor-pointer"
+                  >
+                    <div class="shrink-0">Autocomplete</div>
+                    <input
+                      type="checkbox"
+                      id="autocomplete"
+                      class="size-4 accent-(--color-accent)"
+                    />
+                    <div class="text-(--color-muted)">Show suggestions when typing the prefix</div>
+                  </label>
+                  <div class="flex items-center gap-3 text-sm select-none">
+                    <div class="shrink-0">Max suggestions</div>
+                    <input
+                      id="autoMax"
+                      type="number"
+                      min="1"
+                      max="20"
+                      step="1"
+                      class="w-20 px-2 py-1.5 rounded bg-(--color-panel-2) border border-(--color-border) text-center"
+                    />
+                    <div class="text-(--color-muted)">Limit suggestions count</div>
+                  </div>
+                  <div class="flex items-center gap-3 text-sm select-none">
+                    <div class="shrink-0">Autocomplete position</div>
+                    <select
+                      id="autoPos"
+                      class="px-2 py-1.5 rounded bg-(--color-panel-2) border border-(--color-border)"
+                    >
+                      <option value="auto">Auto</option>
+                      <option value="top">Above</option>
+                      <option value="bottom">Below</option>
+                    </select>
+                    <div class="text-(--color-muted)">Prefer where suggestions appear</div>
+                  </div>
+                </div>
+              </section>
+              <section class="space-y-4 py-5">
+                <h3 class="text-sm font-semibold text-(--color-muted) mb-2">Limits</h3>
+                <div class="flex items-center gap-3 text-sm select-none">
+                  <div class="shrink-0">Character limit</div>
+                  <input
+                    id="charLimit"
+                    type="number"
+                    min="0"
+                    max="10000"
+                    step="50"
+                    class="w-28 px-2 pr-6 py-1.5 rounded bg-(--color-panel-2) border border-(--color-border) text-center"
+                  />
+                  <div class="text-(--color-muted)">Max characters per snippet body</div>
+                </div>
+              </section>
+            </div>
+            <div id="tabAdvanced" class="space-y-0 divide-y divide-(--color-border) hidden">
+              <section class="space-y-4 py-5 first:pt-0">
+                <h3 class="text-sm font-semibold text-(--color-muted) mb-2">Sites</h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div class="flex flex-col gap-2">
+                    <label class="text-sm">Allow list (one host per line)</label>
+                    <textarea
+                      id="allowlist"
+                      class="min-h-28 px-3 py-2 rounded bg-(--color-panel-2) border border-(--color-border) font-mono text-xs"
+                      placeholder="app.example.com"
+                    ></textarea>
+                  </div>
+                  <div class="flex flex-col gap-2">
+                    <label class="text-sm">Block list (one host per line)</label>
+                    <textarea
+                      id="blocklist"
+                      class="min-h-28 px-3 py-2 rounded bg-(--color-panel-2) border border-(--color-border) font-mono text-xs"
+                      placeholder="app.bive.com"
+                    ></textarea>
+                  </div>
+                </div>
+                <div class="text-xs text-(--color-muted)">
+                  Allow list takes precedence when non-empty; block list always disables a matching
+                  host.
+                </div>
+              </section>
+              <section class="space-y-4 py-5 last:pb-0">
+                <h3 class="text-sm font-semibold text-(--color-muted) mb-2">Data</h3>
+                <div class="flex items-center gap-3">
+                  <button
+                    id="importBtn"
+                    class="px-4 py-2 rounded border border-(--color-border) bg-(--color-panel-2) hover:bg-(--color-panel)"
+                  >
+                    Import snippets (JSON)
+                  </button>
+                  <button
+                    id="exportBtn"
+                    class="px-4 py-2 rounded bg-(--color-accent) text-white hover:bg-(--color-accent-hover)"
+                  >
+                    Export snippets (JSON)
+                  </button>
+                  <input id="fileInput" type="file" accept="application/json" class="hidden" />
+                </div>
+              </section>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div
+        id="status"
+        role="status"
+        aria-live="polite"
+        class="min-h-[1.25em] text-right text-(--color-accent) text-sm mt-3"
+      ></div>
+    </div>
+    <script src="options.js" type="module"></script>
+  </body>
 </html>

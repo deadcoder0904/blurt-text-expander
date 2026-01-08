@@ -13,6 +13,10 @@ export function canSaveSnippet(
   return hasTrigger && d.length > 0 && b.length > 0
 }
 
+function normalizeHost(value: string): string {
+  return (value || '').toLowerCase().replace(/^www\./, '')
+}
+
 export function computeNextFocusIndex(
   currentIndex: number,
   length: number,
@@ -54,7 +58,7 @@ export function matchTriggerPure(
 ): Snippet | null {
   const w = word.trim()
   if (!w || !w.startsWith(prefix)) return null
-  const sorted = [...snippets].sort((a, b) => b.trigger.length - a.trigger.length)
+  const sorted = snippets.toSorted((a, b) => b.trigger.length - a.trigger.length)
   return sorted.find((s) => s.trigger === w) ?? null
 }
 
@@ -156,7 +160,7 @@ export function matchTriggerWithAliases(
   const w = (word || '').trim().toLowerCase()
   if (!w) return null
   // Exact trigger match first (prefer longest)
-  const sorted = [...snippets].sort((a, b) => b.trigger.length - a.trigger.length)
+  const sorted = snippets.toSorted((a, b) => b.trigger.length - a.trigger.length)
   const exact = sorted.find((s) => s.trigger.toLowerCase() === w)
   if (exact) return exact
   if (!w.startsWith(prefix)) return null
@@ -174,10 +178,9 @@ export function shouldShowAllForQuery(query: string, prefix: string): boolean {
 }
 
 export function isSiteEnabledForSettings(host: string, settings: Settings): boolean {
-  const normalize = (v: string) => (v || '').toLowerCase().replace(/^www\./, '')
-  const h = normalize(host)
-  const allow = (settings.allowlist || []).map((x) => normalize(x))
-  const block = (settings.blocklist || []).map((x) => normalize(x))
+  const h = normalizeHost(host)
+  const allow = (settings.allowlist || []).map((x) => normalizeHost(x))
+  const block = (settings.blocklist || []).map((x) => normalizeHost(x))
   if (block.includes(h)) return false
   if (allow.length > 0) return allow.includes(h)
   return true

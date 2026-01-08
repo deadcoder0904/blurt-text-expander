@@ -9,6 +9,10 @@ import { aliasesForTrigger, shouldShowAllForQuery } from '../shared/logic'
 import { getSettings, getSnippets, saveSettings } from '../shared/storage'
 import type { Snippet } from '../shared/types'
 
+function normalizeHost(value: string): string {
+  return (value || '').toLowerCase().replace(/^www\./, '')
+}
+
 function renderResultRow(snippet: Snippet): HTMLElement {
   const row = document.createElement('div')
   row.className = 'flex items-center justify-between gap-3 py-3 cursor-pointer'
@@ -62,7 +66,7 @@ function snippetsHash(list: Snippet[]): string {
 }
 
 async function buildIndex(list: Snippet[]) {
-  const local = await create({
+  const local = create({
     schema: {
       trigger: 'string',
       description: 'string',
@@ -152,7 +156,6 @@ async function init() {
   })
 
   // Helpers for block toggle
-  const normalize = (h: string) => (h || '').toLowerCase().replace(/^www\./, '')
   let currentHost = ''
   let normalizedHost = ''
   async function refreshBlockUI() {
@@ -160,9 +163,9 @@ async function init() {
       const tabs = await browser.tabs.query({ active: true, currentWindow: true })
       const url = tabs?.[0]?.url || ''
       currentHost = url ? new URL(url).hostname : ''
-      normalizedHost = normalize(currentHost)
+      normalizedHost = normalizeHost(currentHost)
       const s = await getSettings()
-      const blocked = (s.blocklist || []).map(normalize).includes(normalizedHost)
+      const blocked = (s.blocklist || []).map(normalizeHost).includes(normalizedHost)
       blockToggle.textContent = blocked
         ? `Allow on this site (${normalizedHost})`
         : `Exclude on this site (${normalizedHost || 'site'})`
@@ -177,11 +180,11 @@ async function init() {
     try {
       if (!normalizedHost) return
       const s = await getSettings()
-      const blocked = (s.blocklist || []).map(normalize).includes(normalizedHost)
+      const blocked = (s.blocklist || []).map(normalizeHost).includes(normalizedHost)
       const next = {
         ...s,
         blocklist: blocked
-          ? (s.blocklist || []).filter((h) => normalize(h) !== normalizedHost) // Allow on this site
+          ? (s.blocklist || []).filter((h) => normalizeHost(h) !== normalizedHost) // Allow on this site
           : Array.from(new Set([...(s.blocklist || []), normalizedHost])), // Exclude on this site
       }
       await saveSettings(next)

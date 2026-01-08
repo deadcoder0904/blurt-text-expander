@@ -8,7 +8,7 @@ export const DEFAULT_SETTINGS = {
   enabled: true,
   theme: 'dark' as const,
   triggerPrefix: '/',
-  expansionKey: '' as string | '', // empty => auto-expand on Space/Enter
+  expansionKey: '', // empty => auto-expand on Space/Enter
   charLimit: 5000,
   autocompleteEnabled: true,
   autocompletePosition: 'auto' as const,

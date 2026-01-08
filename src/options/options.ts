@@ -23,6 +23,22 @@ function qs<T extends Element = Element>(sel: string): T {
   return el as T
 }
 
+function displayKey(key?: string): string {
+  if (!key) return ''
+  if (key === ' ') return 'Space'
+  return key
+}
+
+function isVisible(el: HTMLElement): boolean {
+  if (!el) return false
+  const style = window.getComputedStyle(el)
+  if (style.display === 'none' || style.visibility === 'hidden') return false
+  // If element or its ancestors are hidden, offsetParent can be null (except for fixed)
+  if (!el.offsetParent && style.position !== 'fixed') return false
+  if (el.getClientRects().length === 0) return false
+  return true
+}
+
 let currentId: string | null = null
 let snippets: Snippet[] = []
 let settings: Settings = { ...DEFAULT_SETTINGS }
@@ -370,8 +386,8 @@ async function init() {
   const trigEl = qs<HTMLInputElement>('#trigger')
   const descEl = qs<HTMLInputElement>('#description')
   const bodyEl = qs<HTMLTextAreaElement>('#body')
-  trigEl.addEventListener('blur', () => persistSettings())
-  descEl.addEventListener('blur', () => persistSettings())
+  trigEl.addEventListener('blur', () => void persistSettings())
+  descEl.addEventListener('blur', () => void persistSettings())
   trigEl.addEventListener('input', updateSaveEnabled)
   descEl.addEventListener('input', updateSaveEnabled)
   bodyEl.addEventListener('input', () => {
@@ -379,31 +395,26 @@ async function init() {
     updateSaveEnabled()
   })
 
-  qs<HTMLInputElement>('#enabled').addEventListener('change', persistSettings)
+  qs<HTMLInputElement>('#enabled').addEventListener('change', () => void persistSettings())
   qs<HTMLSelectElement>('#theme').addEventListener('change', () => {
     applyTheme(qs<HTMLSelectElement>('#theme').value as Settings['theme'])
-    persistSettings()
+    void persistSettings()
   })
-  qs<HTMLInputElement>('#prefix').addEventListener('change', persistSettings)
+  qs<HTMLInputElement>('#prefix').addEventListener('change', () => void persistSettings())
   const autoToggle = document.querySelector('#autocomplete') as HTMLInputElement | null
-  autoToggle?.addEventListener('change', persistSettings)
+  autoToggle?.addEventListener('change', () => void persistSettings())
   const posToggle = document.querySelector('#autoPos') as HTMLSelectElement | null
-  posToggle?.addEventListener('change', persistSettings)
+  posToggle?.addEventListener('change', () => void persistSettings())
   const maxToggle = document.querySelector('#autoMax') as HTMLInputElement | null
-  maxToggle?.addEventListener('change', persistSettings)
+  maxToggle?.addEventListener('change', () => void persistSettings())
   // Expansion key input capture
   const keyInput = qs<HTMLInputElement>('#expansionKeyInput')
   const hint = qs<HTMLSpanElement>('#expansionKeyHint')
 
-  function displayKey(k?: string) {
-    if (!k) return ''
-    if (k === ' ') return 'Space'
-    return k
-  }
   function storeKey(k: string) {
     // Store exact key value used by KeyboardEvent.key
     settings.expansionKey = k
-    writeSettings(settings)
+    void writeSettings(settings)
   }
   keyInput.value = displayKey(settings.expansionKey || '')
   hint.textContent = settings.expansionKey ? 'Custom key set' : 'Auto: Space/Enter when empty'
@@ -455,7 +466,7 @@ async function init() {
   const charInput = document.querySelector('#charLimit') as HTMLInputElement | null
   charInput?.addEventListener('input', () => {
     updateCounter()
-    persistSettings()
+    void persistSettings()
   })
 
   // Modal open/close
@@ -470,15 +481,6 @@ async function init() {
   const tabAdv = qs<HTMLDivElement>('#tabAdvanced')
   let restoreFocusEl: HTMLElement | null = null
 
-  function isVisible(el: HTMLElement): boolean {
-    if (!el) return false
-    const style = window.getComputedStyle(el)
-    if (style.display === 'none' || style.visibility === 'hidden') return false
-    // If element or its ancestors are hidden, offsetParent can be null (except for fixed)
-    if (!el.offsetParent && style.position !== 'fixed') return false
-    if (el.getClientRects().length === 0) return false
-    return true
-  }
   function focusables(): HTMLElement[] {
     const nodes = dialog.querySelectorAll<HTMLElement>(
       'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])'
@@ -661,7 +663,7 @@ async function init() {
       const found = snippets.find((s) => s.id === target)
       if (found) editSnippet(found.id)
       // Best-effort cleanup
-      clearOpenTarget()
+      void clearOpenTarget()
     }
   })
 }

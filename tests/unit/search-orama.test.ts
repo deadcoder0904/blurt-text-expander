@@ -4,7 +4,7 @@ import { describe, expect, it } from 'bun:test'
 
 describe('Orama fuzzy/acronym search for triggers', () => {
   it("finds '/rabbit-holes' when searching for '/rh' via keywords", async () => {
-    const db = await create({
+    const db = create({
       schema: {
         trigger: 'string',
         description: 'string',

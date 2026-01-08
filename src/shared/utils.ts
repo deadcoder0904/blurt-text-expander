@@ -13,7 +13,7 @@ export function normalizeTrigger(trigger: string, prefix: string): string {
 
 export function detectOverlapWarnings(snippets: Snippet[]): string[] {
   const warnings: string[] = []
-  const triggers = snippets.map((s) => s.trigger).sort((a, b) => a.localeCompare(b))
+  const triggers = snippets.map((s) => s.trigger).toSorted((a, b) => a.localeCompare(b))
   for (let i = 0; i < triggers.length; i++) {
     for (let j = i + 1; j < triggers.length; j++) {
       const a = triggers[i]
@@ -29,7 +29,6 @@ export function detectOverlapWarnings(snippets: Snippet[]): string[] {
 function deepActiveElement(root: Document | ShadowRoot): Element | null {
   let a: Element | null = root.activeElement
   // Traverse into shadow DOMs
-  // eslint-disable-next-line no-constant-condition
   while (a && (a as HTMLElement).shadowRoot && (a as HTMLElement).shadowRoot?.activeElement) {
     a = ((a as HTMLElement).shadowRoot?.activeElement as Element | null) ?? a
   }

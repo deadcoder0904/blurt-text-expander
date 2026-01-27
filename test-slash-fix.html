@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Slash Command Fix</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .test-area {
+            margin: 20px 0;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+        textarea, input {
+            width: 100%;
+            padding: 8px;
+            margin: 5px 0;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        button {
+            padding: 10px 15px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+    </style>
+</head>
+<body>
+    <h1>Test Slash Command Fix</h1>
+    
+    <div class="test-area">
+        <h2>Test Case 1: URL Input</h2>
+        <p>Type a URL, press Enter twice, then press / to test slash command</p>
+        <input type="url" id="url-input" placeholder="Type a URL here, then press Enter twice and try /">
+    </div>
+    
+    <div class="test-area">
+        <h2>Test Case 2: Text Input</h2>
+        <p>Regular text input for comparison</p>
+        <input type="text" id="text-input" placeholder="Regular text input">
+    </div>
+    
+    <div class="test-area">
+        <h2>Test Case 3: Textarea</h2>
+        <p>Multiline text area</p>
+        <textarea id="textarea-input" placeholder="Type here and try slash command"></textarea>
+    </div>
+    
+    <div class="test-area">
+        <h2>Test Case 4: ContentEditable</h2>
+        <p>Editable div element</p>
+        <div id="editable-div" contenteditable="true" style="min-height: 100px; border: 1px solid #ddd; padding: 8px; border-radius: 4px;">
+            Type here and try slash command
+        </div>
+    </div>
+    
+    <div class="test-area">
+        <h2>Test Case 5: Number Input</h2>
+        <p>Number input (should now work with our fix)</p>
+        <input type="number" id="number-input" placeholder="Number input">
+    </div>
+    
+    <button onclick="testAllCases()">Run All Tests</button>
+    
+    <div id="results" style="margin-top: 20px; padding: 15px; background-color: #f5f5f5; border-radius: 5px;"></div>
+    
+    <script>
+        function testAllCases() {
+            const results = document.getElementById('results');
+            results.innerHTML = '<h3>Test Results:</h3>';
+            
+            // Test each input type
+            const testCases = [
+                { id: 'url-input', name: 'URL Input' },
+                { id: 'text-input', name: 'Text Input' },
+                { id: 'textarea-input', name: 'Textarea' },
+                { id: 'editable-div', name: 'ContentEditable' },
+                { id: 'number-input', name: 'Number Input' }
+            ];
+            
+            testCases.forEach(testCase => {
+                const element = document.getElementById(testCase.id);
+                if (element) {
+                    // Focus the element
+                    element.focus();
+                    
+                    // Simulate typing and then slash command
+                    const result = checkEditableDetection(element);
+                    
+                    results.innerHTML += `<p>${testCase.name}: ${result ? '✅ PASS' : '❌ FAIL'}</p>`;
+                }
+            });
+        }
+        
+        function checkEditableDetection(element) {
+            // This simulates the getActiveEditable function logic
+            if (element instanceof HTMLInputElement) {
+                const textTypes = ['text', 'search', 'email', 'url', 'tel', 'password', '', 'number'];
+                return textTypes.includes(element.type);
+            }
+            if (element instanceof HTMLTextAreaElement) return true;
+            if (element.isContentEditable) return true;
+            if (element.tabIndex >= 0 && (element.textContent?.trim() || element.value || element.innerText?.trim())) {
+                return true;
+            }
+            return false;
+        }
+        
+        // Add event listeners to show which element is active
+        document.querySelectorAll('input, textarea, [contenteditable]').forEach(element => {
+            element.addEventListener('focus', function() {
+                console.log('Focused on:', this.id || this.tagName);
+            });
+            
+            element.addEventListener('keydown', function(e) {
+                if (e.key === '/') {
+                    console.log('Slash command attempted on:', this.id || this.tagName);
+                    const isEditable = checkEditableDetection(this);
+                    console.log('Is editable:', isEditable);
+                    if (isEditable) {
+                        alert('✅ Slash command would work on ' + (this.id || this.tagName));
+                    } else {
+                        alert('❌ Slash command failed on ' + (this.id || this.tagName));
+                    }
+                }
+            });
+        });
+    </script>
+</body>
+</html>

@@ -11,6 +11,11 @@ export function normalizeTrigger(trigger: string, prefix: string): string {
   return `${prefix}${t}`
 }
 
+export function ensureTrailingSpace(value: string): string {
+  const v = value ?? ''
+  return /\s$/.test(v) ? v : `${v} `
+}
+
 export function detectOverlapWarnings(snippets: Snippet[]): string[] {
   const warnings: string[] = []
   const triggers = snippets.map((s) => s.trigger).toSorted((a, b) => a.localeCompare(b))
@@ -56,19 +61,31 @@ function selectionForNode(node: Node): Selection | null {
 export function getActiveEditable(): HTMLElement | null {
   const activeAny = deepActiveElement(document) as HTMLElement | null
   if (!activeAny) return null
-  // Inputs and textareas (text-like)
+  
+  // Inputs and textareas (text-like) - expanded to be more inclusive
   const isTextInput =
     activeAny instanceof HTMLInputElement &&
     (activeAny.type === 'text' ||
       activeAny.type === 'search' ||
       activeAny.type === 'email' ||
       activeAny.type === 'url' ||
-      activeAny.type === 'tel')
+      activeAny.type === 'tel' ||
+      activeAny.type === 'password' ||
+      !activeAny.type || // Handle inputs without explicit type (defaults to text)
+      activeAny.type === 'number') // Include number inputs for text expansion
   if (isTextInput || activeAny instanceof HTMLTextAreaElement) return activeAny
-  // contentEditable or within one
+  
+  // contentEditable or within one - improved detection
   if (activeAny.isContentEditable) return activeAny
-  const ce = activeAny.closest?.('[contenteditable="true"], [contenteditable="plaintext-only"]')
+  const ce = activeAny.closest?.('[contenteditable], [contenteditable="true"], [contenteditable="plaintext-only"]')
   if (ce) return ce as HTMLElement
+  
+  // Additional fallback: check if the element has text content and is focusable
+  if (activeAny.tabIndex >= 0 && 
+      (activeAny.textContent?.trim() || (activeAny as any).value || activeAny.innerText?.trim())) {
+    return activeAny
+  }
+  
   return null
 }
 

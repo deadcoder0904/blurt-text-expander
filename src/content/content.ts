@@ -3,10 +3,12 @@ import browser from 'webextension-polyfill'
 import { DEFAULT_SETTINGS, STORAGE_KEYS } from '../shared/constants'
 import {
   autocompleteSuggestions,
+  computeNextFocusIndex,
   isAutocompleteEnabledOnSite,
   isSiteEnabledForSettings,
   matchTriggerWithAliases,
 } from '../shared/logic'
+import { swallowEvent } from '../shared/events'
 import {
   getSettings as loadSettingsLocal,
   getSnippets as loadSnippetsLocal,
@@ -17,7 +19,9 @@ import {
   getCaretClientRect,
   getWordBeforeCaret,
   replaceRangeWithText,
+  ensureTrailingSpace,
 } from '../shared/utils'
+import { applyWheelToScrollTop, type WheelDeltaMode } from '../shared/scroll'
 
 let settings: Settings = { ...DEFAULT_SETTINGS }
 let snippets: Snippet[] = []
@@ -26,6 +30,8 @@ let suggestIndex = 0
 let suggestItems: Snippet[] = []
 let repositionTimer: number | null = null
 let siteActive = true
+
+const BLURT_EVENT_GUARD = Symbol('blurtEventGuard')
 
 function themeMode(): 'light' | 'dark' {
   if (settings.theme === 'light') return 'light'
@@ -52,7 +58,29 @@ function shouldAutoExpandOnKey(evt: KeyboardEvent): boolean {
   return evt.key === settings.expansionKey
 }
 
+function wheelDeltaMode(value: number): WheelDeltaMode {
+  if (value === 1 || value === 2) return value
+  return 0
+}
+
+function onWheel(evt: WheelEvent) {
+  if (!suggestEl) return
+  // Allow browser zoom gestures.
+  if (evt.ctrlKey || evt.metaKey) return
+  // Trap scrolling to the suggestions list so the underlying page doesn't scroll.
+  evt.preventDefault()
+  suggestEl.scrollTop = applyWheelToScrollTop(
+    suggestEl.scrollTop,
+    suggestEl.clientHeight,
+    suggestEl.scrollHeight,
+    evt.deltaY,
+    wheelDeltaMode(evt.deltaMode)
+  )
+}
+
 function onKeydown(evt: KeyboardEvent) {
+  if ((evt as any)[BLURT_EVENT_GUARD]) return
+  ;(evt as any)[BLURT_EVENT_GUARD] = true
   if (!siteActive) return
   // Avoid interfering with IME composition
   if (evt.isComposing || evt.key === 'Process') return
@@ -67,18 +95,18 @@ function onKeydown(evt: KeyboardEvent) {
       // Continue handling below only if expansion is explicitly requested
     }
     if (evt.key === 'ArrowDown' || evt.key === 'ArrowUp') {
-      evt.preventDefault()
-      const delta = evt.key === 'ArrowDown' ? 1 : -1
-      suggestIndex = (suggestIndex + delta + suggestItems.length) % suggestItems.length
+      swallowEvent(evt)
+      suggestIndex = computeNextFocusIndex(suggestIndex, suggestItems.length, evt.key === 'ArrowUp')
       renderSuggest()
       return
     }
     if (evt.key === 'Enter' || evt.key === 'Tab') {
-      evt.preventDefault()
+      swallowEvent(evt)
       applySuggestion(target)
       return
     }
     if (evt.key === 'Escape') {
+      swallowEvent(evt)
       hideSuggest()
       return
     }
@@ -94,7 +122,7 @@ function onKeydown(evt: KeyboardEvent) {
 
   // Perform replacement — do not force focus or extra characters
   evt.preventDefault()
-  replaceRangeWithText(target, range[0], range[1], match.body)
+  replaceRangeWithText(target, range[0], range[1], ensureTrailingSpace(match.body))
 }
 
 function desiredPlacement(target: HTMLElement, el: HTMLElement): 'top' | 'bottom' {
@@ -142,7 +170,8 @@ function renderSuggest() {
       whiteSpace: 'nowrap',
       fontSize: '13px',
     } as CSSStyleDeclaration)
-    row.addEventListener('mouseenter', () => {
+    row.addEventListener('mousemove', () => {
+      if (suggestIndex === i) return
       suggestIndex = i
       renderSuggest()
     })
@@ -152,16 +181,20 @@ function renderSuggest() {
       if (target) applySuggestion(target)
     })
     suggestEl?.appendChild(row)
+    if (i === suggestIndex) {
+      row.scrollIntoView?.({ block: 'nearest' })
+    }
   })
 }
 
 function showSuggest(target: HTMLElement, list: Snippet[]) {
   hideSuggest()
   const limit = Math.max(1, Number(settings.autocompleteMaxItems || 8))
-  suggestItems = list.slice(0, limit)
+  suggestItems = list
   if (!suggestItems.length) return
   suggestIndex = 0
   suggestEl = document.createElement('div')
+  suggestEl.dataset.blurtSuggest = 'true'
   const mode = themeMode()
   const panelBg = mode === 'light' ? '#ffffff' : '#0b0b0c'
   const panelText = mode === 'light' ? '#111827' : '#e5e7eb'
@@ -177,6 +210,7 @@ function showSuggest(target: HTMLElement, list: Snippet[]) {
     boxShadow: '0 10px 30px rgba(0,0,0,0.35)',
     maxHeight: `${Math.max(120, 30 * limit)}px`,
     overflowY: 'auto',
+    overscrollBehavior: 'contain',
     minWidth: '240px',
     fontFamily: 'ui-sans-serif,system-ui,Segoe UI,Roboto,Inter,sans-serif',
     fontSize: '12px',
@@ -199,7 +233,7 @@ function applySuggestion(target: HTMLElement) {
   const chosen = suggestItems[suggestIndex]
   const info = getWordBeforeCaret(target)
   if (!info) return
-  replaceRangeWithText(target, info.range[0], info.range[1], chosen.body)
+  replaceRangeWithText(target, info.range[0], info.range[1], ensureTrailingSpace(chosen.body))
   hideSuggest()
 }
 
@@ -210,7 +244,9 @@ function currentToken(): string {
   return info?.word ?? ''
 }
 
-function onInput() {
+function onInput(evt: Event) {
+  if ((evt as any)[BLURT_EVENT_GUARD]) return
+  ;(evt as any)[BLURT_EVENT_GUARD] = true
   if (!siteActive) return
   if (!suggestEl) return
   const token = currentToken()
@@ -219,16 +255,10 @@ function onInput() {
     hideSuggest()
     return
   }
-  const list = autocompleteSuggestions(
-    q,
-    snippets,
-    settings.triggerPrefix,
-    settings.autocompleteMaxItems || 8
-  )
+  const list = autocompleteSuggestions(q, snippets, settings.triggerPrefix)
   if (!list.length) hideSuggest()
   else {
-    const limit = Math.max(1, Number(settings.autocompleteMaxItems || 8))
-    suggestItems = list.slice(0, limit)
+    suggestItems = list
     suggestIndex = 0
     renderSuggest()
     const el = getActiveEditable()
@@ -255,12 +285,10 @@ browser.storage.onChanged.addListener((changes, area) => {
       if (!q || !q.startsWith(settings.triggerPrefix)) {
         hideSuggest()
       } else {
-        const term = q.toLowerCase()
-        const list = snippets.filter((s) => s.trigger.toLowerCase().startsWith(term))
+        const list = autocompleteSuggestions(q, snippets, settings.triggerPrefix)
         if (!list.length) hideSuggest()
         else {
-          const limit = Math.max(1, Number(settings.autocompleteMaxItems || 8))
-          suggestItems = list.slice(0, limit)
+          suggestItems = list
           suggestIndex = 0
           renderSuggest()
           const el = getActiveEditable()
@@ -272,9 +300,9 @@ browser.storage.onChanged.addListener((changes, area) => {
 })
 
 async function init() {
-  await hydrate()
   window.addEventListener('keydown', onKeydown, true)
   window.addEventListener('input', onInput, true)
+  window.addEventListener('wheel', onWheel, { capture: true, passive: false })
   window.addEventListener('blur', () => hideSuggest(), true)
   window.addEventListener('resize', () => {
     const target = getActiveEditable()
@@ -297,30 +325,32 @@ async function init() {
       if (ke.isComposing || ke.key === 'Process') return
       if (ke.key === settings.triggerPrefix) {
         const target = getActiveEditable()
-        if (!target) return
-        showSuggest(target, snippets)
+        if (!target) {
+          // Debug: log when no editable target is found
+          console.debug('[Blurt] No editable target found for slash command')
+          return
+        }
+        
+        // Ensure the target is still valid and has focus
+        try {
+          if (document.activeElement !== target && !target.contains(document.activeElement)) {
+            console.debug('[Blurt] Target lost focus, re-checking active element')
+            const newTarget = getActiveEditable()
+            if (newTarget) {
+              showSuggest(newTarget, snippets)
+            }
+            return
+          }
+          showSuggest(target, snippets)
+        } catch (error) {
+          console.error('[Blurt] Error showing suggestions:', error)
+        }
       }
     },
     true
   )
 
-  // Attach listeners directly on shadow roots where focus occurs to avoid event retargeting issues
-  const attached = new WeakSet<ShadowRoot>()
-  window.addEventListener(
-    'focusin',
-    () => {
-      const target = getActiveEditable()
-      if (!target) return
-      const root = target.getRootNode()
-      if (root instanceof ShadowRoot && !attached.has(root)) {
-        root.addEventListener('keydown', (e) => onKeydown(e as unknown as KeyboardEvent), true)
-        root.addEventListener('input', (_e) => onInput(), true)
-        root.addEventListener('blur', () => hideSuggest(), true)
-        attached.add(root)
-      }
-    },
-    true
-  )
+  await hydrate()
 }
 
 void init()
